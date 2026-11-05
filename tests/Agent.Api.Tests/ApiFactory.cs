@@ -15,6 +15,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     private readonly string databasePath = Path.Combine(Path.GetTempPath(), $"agent-tests-{Guid.NewGuid():N}.db");
 
+    /// <summary>A throwaway workspace the tests can write files into before calling the API.</summary>
+    public string WorkspaceRoot { get; } = Path.Combine(Path.GetTempPath(), $"agent-ws-{Guid.NewGuid():N}");
+
     public static string TestTokenHash =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(TestToken))).ToLowerInvariant();
 
@@ -23,21 +26,30 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.UseSetting("Agent:DatabasePath", databasePath);
         builder.UseSetting("Agent:ApiTokenSha256", TestTokenHash);
+        builder.UseSetting("Agent:WorkspaceRoot", WorkspaceRoot);
     }
 
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing && File.Exists(databasePath))
+        if (!disposing)
         {
-            try
-            {
-                File.Delete(databasePath);
-            }
-            catch (IOException)
-            {
-                // SQLite may still hold the file briefly. The OS temp folder is cleaned later.
-            }
+            return;
+        }
+
+        TryDelete(() => File.Delete(databasePath));
+        TryDelete(() => Directory.Delete(WorkspaceRoot, recursive: true));
+    }
+
+    private static void TryDelete(Action delete)
+    {
+        try
+        {
+            delete();
+        }
+        catch (IOException)
+        {
+            // A handle may still be open briefly. The OS temp folder is cleaned later.
         }
     }
 }

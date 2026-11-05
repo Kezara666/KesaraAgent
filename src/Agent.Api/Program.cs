@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 var databasePath = builder.Configuration["Agent:DatabasePath"] ?? "agent.db";
-builder.Services.AddAgentInfrastructure($"Data Source={databasePath}");
+var workspaceRoot = builder.Configuration["Agent:WorkspaceRoot"] ?? "workspace";
+builder.Services.AddAgentInfrastructure($"Data Source={databasePath}", workspaceRoot);
 
 builder.Services.AddAuthentication(ApiTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokenAuthenticationHandler.SchemeName, _ => { });
@@ -53,6 +54,7 @@ app.MapGet("/health/ready", async (TaskService service, CancellationToken cancel
     .AllowAnonymous();
 
 app.MapTaskEndpoints();
+app.MapWorkspaceEndpoints();
 
 app.Run();
 
