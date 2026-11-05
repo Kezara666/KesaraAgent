@@ -11,11 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var databasePath = builder.Configuration["Agent:DatabasePath"] ?? "agent.db";
+var database = new DatabaseOptions
+{
+    Provider = builder.Configuration["Agent:Database:Provider"] ?? DatabaseOptions.SqliteProvider,
+    ConnectionString = builder.Configuration["Agent:Database:ConnectionString"]
+        ?? $"Data Source={builder.Configuration["Agent:DatabasePath"] ?? "agent.db"}",
+};
 var workspaceRoot = builder.Configuration["Agent:WorkspaceRoot"] ?? "workspace";
 var providerOptions = builder.Configuration.GetSection("Agent:Providers").Get<List<ProviderOptions>>() ?? [];
 var profileOptions = builder.Configuration.GetSection("Agent:ModelProfiles").Get<List<ModelProfileOptions>>() ?? [];
-builder.Services.AddAgentInfrastructure($"Data Source={databasePath}", workspaceRoot, providerOptions, profileOptions);
+builder.Services.AddAgentInfrastructure(database, workspaceRoot, providerOptions, profileOptions);
 builder.Services.AddAgentHeadless(
     builder.Configuration["Agent:Notifications:NtfyBaseUrl"],
     builder.Configuration["Agent:Notifications:NtfyTopic"]);
