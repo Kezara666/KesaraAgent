@@ -48,6 +48,19 @@ public sealed class EfTaskStore(IDbContextFactory<AgentDbContext> factory) : ITa
         return rows.Select(ToTask).ToList();
     }
 
+    public async Task<IReadOnlyList<AgentTask>> ListByStatusAsync(AgentTaskStatus status, int limit, CancellationToken cancellationToken)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var text = status.ToString();
+        var rows = await db.Tasks.AsNoTracking()
+            .Where(task => task.Status == text)
+            .OrderBy(task => task.CreatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return rows.Select(ToTask).ToList();
+    }
+
     public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
