@@ -8,6 +8,10 @@ using Agent.Infrastructure.Llm;
 using Agent.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +30,18 @@ builder.Services.AddAgentHeadless(
     builder.Configuration["Agent:Notifications:NtfyTopic"]);
 builder.Services.AddWindowsService();
 builder.Services.AddHostedService<SchedulerWorker>();
+
+// Traces and metrics for every request, LLM call, and database call. Export is switched on by
+// OTEL_EXPORTER_OTLP_ENDPOINT, so tests and offline runs send nothing anywhere.
+var otel = builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("kesara-agent-api"))
+    .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation())
+    .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddRuntimeInstrumentation());
+
+if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")))
+{
+    otel.UseOtlpExporter();
+}
 
 builder.Services.AddAuthentication(ApiTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokenAuthenticationHandler.SchemeName, _ => { });
