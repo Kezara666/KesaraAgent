@@ -1,9 +1,7 @@
-using Agent.Core.Shell;
-
 namespace Agent.Core.Workspace;
 
-/// <summary>Read, search, edit, and command operations on the workspace (FR-3.1 to FR-3.4).</summary>
-public sealed class WorkspaceService(IWorkspaceFileSystem files, IShellRunner shell)
+/// <summary>Read, search, and edit operations on the workspace (FR-3.1, FR-3.2). Commands are governed elsewhere.</summary>
+public sealed class WorkspaceService(IWorkspaceFileSystem files)
 {
     public const int MaxSearchResults = 200;
 
@@ -49,31 +47,8 @@ public sealed class WorkspaceService(IWorkspaceFileSystem files, IShellRunner sh
 
         return new EditResult(relativePath, PatchApplier.UnifiedDiff(relativePath, before, after));
     }
-
-    /// <summary>Runs a command only if policy allows it. Denied commands never reach the shell.</summary>
-    public async Task<ShellResult> RunCommandAsync(
-        string command,
-        ShellKind shellKind,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        var decision = CommandPolicy.Evaluate(command);
-        if (decision.Outcome != CommandOutcome.Allowed)
-        {
-            throw new CommandNotAllowedException(decision);
-        }
-
-        return await shell.RunAsync(new ShellRequest(command, shellKind, timeout), cancellationToken).ConfigureAwait(false);
-    }
 }
 
 public sealed record SearchHit(string Path, int Line, string Text);
 
 public sealed record EditResult(string Path, string Diff);
-
-/// <summary>Raised when policy refuses or holds a command. Carries the decision for the caller.</summary>
-public sealed class CommandNotAllowedException(CommandDecision decision)
-    : InvalidOperationException(decision.Reason)
-{
-    public CommandDecision Decision { get; } = decision;
-}

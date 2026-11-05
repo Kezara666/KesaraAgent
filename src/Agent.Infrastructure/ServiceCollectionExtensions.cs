@@ -1,3 +1,6 @@
+using Agent.Core.Approvals;
+using Agent.Core.Audit;
+using Agent.Core.Governance;
 using Agent.Core.Llm;
 using Agent.Core.Ports;
 using Agent.Core.Shell;
@@ -46,6 +49,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IWorkspaceFileSystem>(_ => new LocalWorkspaceFileSystem(workspaceRoot));
         services.AddSingleton<IShellRunner>(_ => new ProcessShellRunner(Path.GetFullPath(workspaceRoot)));
         services.AddSingleton<WorkspaceService>();
+
+        services.AddSingleton<IAuditLog, EfAuditLog>();
+        services.AddSingleton<IApprovalStore, EfApprovalStore>();
+        services.AddSingleton<GovernedCommandService>();
 
         return services;
     }

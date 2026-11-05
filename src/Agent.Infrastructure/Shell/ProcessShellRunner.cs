@@ -8,9 +8,18 @@ namespace Agent.Infrastructure.Shell;
 /// Runs approved commands in the workspace root with a timeout, an output cap, and a minimal
 /// environment. Secrets in the host environment are not passed to child processes.
 /// </summary>
-public sealed class ProcessShellRunner(string workingDirectory) : IShellRunner
+public sealed class ProcessShellRunner : IShellRunner
 {
     public const int MaxOutputCharacters = 64 * 1024;
+
+    private readonly string workingDirectory;
+
+    public ProcessShellRunner(string workingDirectory)
+    {
+        // A missing working directory makes every process start fail, so create it up front.
+        this.workingDirectory = Path.GetFullPath(workingDirectory);
+        Directory.CreateDirectory(this.workingDirectory);
+    }
 
     private static readonly string[] InheritedVariables =
     [
