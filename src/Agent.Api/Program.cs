@@ -3,6 +3,7 @@ using Agent.Api.Endpoints;
 using Agent.Api.Workers;
 using Agent.Core.Tasks;
 using Agent.Infrastructure;
+using Agent.Infrastructure.Llm;
 using Agent.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 var databasePath = builder.Configuration["Agent:DatabasePath"] ?? "agent.db";
 var workspaceRoot = builder.Configuration["Agent:WorkspaceRoot"] ?? "workspace";
-builder.Services.AddAgentInfrastructure($"Data Source={databasePath}", workspaceRoot);
+var providerOptions = builder.Configuration.GetSection("Agent:Providers").Get<List<ProviderOptions>>() ?? [];
+var profileOptions = builder.Configuration.GetSection("Agent:ModelProfiles").Get<List<ModelProfileOptions>>() ?? [];
+builder.Services.AddAgentInfrastructure($"Data Source={databasePath}", workspaceRoot, providerOptions, profileOptions);
 
 builder.Services.AddAuthentication(ApiTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokenAuthenticationHandler.SchemeName, _ => { });

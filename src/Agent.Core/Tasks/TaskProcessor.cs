@@ -1,3 +1,4 @@
+using Agent.Core.Llm;
 using Agent.Core.Ports;
 
 namespace Agent.Core.Tasks;
@@ -21,11 +22,11 @@ public sealed class TaskProcessor(ITaskStore store, ILlmClient llm, TimeProvider
 
         try
         {
-            var output = await llm.CompleteAsync(task.Prompt, cancellationToken).ConfigureAwait(false);
+            var response = await llm.CompleteAsync(new LlmRequest(task.Prompt), cancellationToken).ConfigureAwait(false);
             var done = running with
             {
                 Status = AgentTaskStatus.Done,
-                Result = output,
+                Result = response.Text,
                 UpdatedAt = clock.GetUtcNow(),
             };
             await store.UpdateAsync(done, cancellationToken).ConfigureAwait(false);
