@@ -1,7 +1,9 @@
+using Agent.Core.Llm;
+
 namespace Agent.Core.Ports;
 
-/// <summary>Port for model calls. Real providers arrive in feat/llm-gateway.</summary>
+/// <summary>The agent's view of model access. <see cref="LlmRouter"/> is the production implementation.</summary>
 public interface ILlmClient
 {
-    Task<string> CompleteAsync(string prompt, CancellationToken cancellationToken);
+    Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken);
 }
