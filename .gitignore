@@ -30,3 +30,8 @@ tools/staging/
 # OS and editor noise
 Thumbs.db
 .DS_Store
+
+# Web UI end-to-end workspace
+apps/web/e2e-workspace/
+apps/web/test-results/
+apps/web/playwright-report/
