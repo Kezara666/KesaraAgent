@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Agent.Api.Auth;
+using Agent.Core.Governance;
 using Agent.Core.Shell;
 using Agent.Core.Workspace;
 using Microsoft.AspNetCore.Mvc;
@@ -77,7 +79,11 @@ public static class WorkspaceEndpoints
             return Results.Ok(result);
         });
 
-    private static Task<IResult> RunCommandAsync(CommandRequest request, WorkspaceService service, CancellationToken cancellationToken) =>
+    private static Task<IResult> RunCommandAsync(
+        CommandRequest request,
+        HttpContext httpContext,
+        GovernedCommandService service,
+        CancellationToken cancellationToken) =>
         Guard(async () =>
         {
             if (!Enum.TryParse<ShellKind>(request.Shell, ignoreCase: true, out var shell))
@@ -88,13 +94,23 @@ public static class WorkspaceEndpoints
             }
 
             var seconds = Math.Clamp(request.TimeoutSeconds ?? DefaultTimeoutSeconds, 1, MaxTimeoutSeconds);
-            var result = await service.RunCommandAsync(
+            var submission = await service.SubmitAsync(
                     request.Command ?? string.Empty,
                     shell,
                     TimeSpan.FromSeconds(seconds),
+                    httpContext.User.Identity?.Name ?? "anonymous",
+                    Activity.Current?.TraceId.ToString(),
                     cancellationToken)
                 .ConfigureAwait(false);
-            return Results.Ok(result);
+
+            return submission switch
+            {
+                CommandExecuted executed => Results.Ok(executed.Result),
+                CommandPending pending => Results.Accepted(
+                    $"/api/v1/approvals/{pending.ApprovalId}",
+                    new { approvalId = pending.ApprovalId, status = "Pending", expiresAt = pending.ExpiresAt }),
+                _ => throw new InvalidOperationException("Unknown submission type."),
+            };
         });
 
     /// <summary>Maps the workspace and policy failures to stable HTTP responses without exposing paths or secrets.</summary>

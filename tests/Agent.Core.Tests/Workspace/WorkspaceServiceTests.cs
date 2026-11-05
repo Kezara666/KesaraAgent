@@ -1,4 +1,3 @@
-using Agent.Core.Shell;
 using Agent.Core.Workspace;
 using Xunit;
 
@@ -13,25 +12,12 @@ public sealed class WorkspaceServiceTests
         {
             ["notes.md"] = "alpha\nbeta\n",
         });
-        var service = new WorkspaceService(files, new RecordingShell());
+        var service = new WorkspaceService(files);
 
         var result = await service.EditAsync("notes.md", "beta", "BETA", CancellationToken.None);
 
         Assert.Contains("+BETA", result.Diff, StringComparison.Ordinal);
         Assert.Equal("alpha\nBETA\n", files.Contents["notes.md"]);
-    }
-
-    [Fact]
-    public async Task FR34DeniedCommandNeverReachesTheShell()
-    {
-        var shell = new RecordingShell();
-        var service = new WorkspaceService(new InMemoryWorkspaceFiles(new Dictionary<string, string>()), shell);
-
-        var exception = await Assert.ThrowsAsync<CommandNotAllowedException>(() =>
-            service.RunCommandAsync("Remove-Item -Recurse C:\\", ShellKind.PowerShell, TimeSpan.FromSeconds(5), CancellationToken.None));
-
-        Assert.Equal(CommandOutcome.Denied, exception.Decision.Outcome);
-        Assert.Equal(0, shell.Runs);
     }
 
     [Fact]
@@ -42,7 +28,7 @@ public sealed class WorkspaceServiceTests
             ["a.md"] = "one\nTODO: fix\n",
             ["b.md"] = "todo later\n",
         });
-        var service = new WorkspaceService(files, new RecordingShell());
+        var service = new WorkspaceService(files);
 
         var hits = await service.SearchAsync("todo", limit: 10, CancellationToken.None);
 
@@ -68,16 +54,5 @@ public sealed class WorkspaceServiceTests
 
         public Task<IReadOnlyList<string>> ListTextFilesAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<string>>(Contents.Keys.OrderBy(path => path, StringComparer.Ordinal).ToList());
-    }
-
-    private sealed class RecordingShell : IShellRunner
-    {
-        public int Runs { get; private set; }
-
-        public Task<ShellResult> RunAsync(ShellRequest request, CancellationToken cancellationToken)
-        {
-            Runs++;
-            return Task.FromResult(new ShellResult(0, string.Empty, string.Empty, TimedOut: false));
-        }
     }
 }
