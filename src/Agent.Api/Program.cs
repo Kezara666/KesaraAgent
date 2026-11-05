@@ -16,6 +16,11 @@ var workspaceRoot = builder.Configuration["Agent:WorkspaceRoot"] ?? "workspace";
 var providerOptions = builder.Configuration.GetSection("Agent:Providers").Get<List<ProviderOptions>>() ?? [];
 var profileOptions = builder.Configuration.GetSection("Agent:ModelProfiles").Get<List<ModelProfileOptions>>() ?? [];
 builder.Services.AddAgentInfrastructure($"Data Source={databasePath}", workspaceRoot, providerOptions, profileOptions);
+builder.Services.AddAgentHeadless(
+    builder.Configuration["Agent:Notifications:NtfyBaseUrl"],
+    builder.Configuration["Agent:Notifications:NtfyTopic"]);
+builder.Services.AddWindowsService();
+builder.Services.AddHostedService<SchedulerWorker>();
 
 builder.Services.AddAuthentication(ApiTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokenAuthenticationHandler.SchemeName, _ => { });
@@ -61,6 +66,7 @@ app.MapTaskEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapApprovalEndpoints();
 app.MapAuditEndpoints();
+app.MapScheduleEndpoints();
 
 app.Run();
 
