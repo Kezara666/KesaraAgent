@@ -59,7 +59,7 @@ public sealed class ApprovalAuditApiTests(ApiFactory factory) : IClassFixture<Ap
             entry.GetProperty("action").GetString() == "http.GET"
             && entry.GetProperty("target").GetString() == "/api/v1/tasks"
             && entry.GetProperty("result").GetString() == "200"
-            && entry.GetProperty("actor").GetString() == "api-client");
+            && entry.GetProperty("actor").GetString() == "bootstrap-admin");
     }
 
     [Fact]
