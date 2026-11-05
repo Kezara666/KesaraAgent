@@ -24,7 +24,8 @@ Run build, test, and format check before reporting a task as done.
 
 ## Current state
 
-- Merged to `main`: `chore/bootstrap`, `feat/core-api` (gate tests pass).
-- Next branch: `feat/workspace-tools`.
+- Merged to `main`: `chore/bootstrap`, `feat/core-api`, `feat/workspace-tools` (gate tests pass once merged).
+- Next branch: `feat/llm-gateway`.
 - Known gaps from `feat/core-api`: FR-8.4 uses one token with all scopes, FR-8.7 (audit per call) waits for `feat/policy-audit`, FR-8.8 (OpenAPI drift check) is not yet in CI, and CS1591 is suppressed until public docs are added.
+- Known gaps from `feat/workspace-tools`: FR-3.5 (git checkpoint before edits) is not built. Commands that need approval are refused, because the approval flow arrives with `feat/policy-audit`. Edits can only change existing files.
 - Schema is created with `EnsureCreated` until `infra/postgres` adds migrations.
