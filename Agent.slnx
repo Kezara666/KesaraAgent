@@ -7,6 +7,7 @@
     <Project Path="src/Agent.Worker/Agent.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Agent.Api.Tests/Agent.Api.Tests.csproj" />
     <Project Path="tests/Agent.Architecture.Tests/Agent.Architecture.Tests.csproj" />
     <Project Path="tests/Agent.Core.Tests/Agent.Core.Tests.csproj" />
   </Folder>

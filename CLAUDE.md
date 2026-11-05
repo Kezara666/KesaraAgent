@@ -24,5 +24,7 @@ Run build, test, and format check before reporting a task as done.
 
 ## Current state
 
-- Branch: `chore/bootstrap`
-- Next branch after review: `feat/core-api`
+- Merged to `main`: `chore/bootstrap`, `feat/core-api` (gate tests pass).
+- Next branch: `feat/workspace-tools`.
+- Known gaps from `feat/core-api`: FR-8.4 uses one token with all scopes, FR-8.7 (audit per call) waits for `feat/policy-audit`, FR-8.8 (OpenAPI drift check) is not yet in CI, and CS1591 is suppressed until public docs are added.
+- Schema is created with `EnsureCreated` until `infra/postgres` adds migrations.
