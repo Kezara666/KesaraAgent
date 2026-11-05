@@ -3,6 +3,7 @@ using Agent.Core.Audit;
 using Agent.Core.Governance;
 using Agent.Core.Llm;
 using Agent.Core.Ports;
+using Agent.Core.Security;
 using Agent.Core.Shell;
 using Agent.Core.Tasks;
 using Agent.Core.Workspace;
@@ -61,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WorkspaceService>();
 
         services.AddSingleton<IAuditLog, EfAuditLog>();
+        services.AddSingleton<IApiTokenStore, EfApiTokenStore>();
         services.AddSingleton<IApprovalStore, EfApprovalStore>();
         services.AddSingleton<GovernedCommandService>();
 
