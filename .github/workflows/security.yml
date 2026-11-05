@@ -1,0 +1,47 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan history for secrets
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:v8.24.2 \
+            detect --source /repo --redact --exit-code 1
+
+  vulnerabilities:
+    name: Dependency and config scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan the repository
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" aquasec/trivy:0.66.0 \
+            fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --exit-code 1 /repo
+
+  sbom:
+    name: Software bill of materials (Syft)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate SBOM
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" anchore/syft:v1.22.0 dir:/repo -o cyclonedx-json > sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
