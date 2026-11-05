@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Agent.Infrastructure\Agent.Infrastructure.csproj" />
+    <ProjectReference Include="..\Agent.Fake.Mcp\Agent.Fake.Mcp.csproj" />
   </ItemGroup>
 
 </Project>
