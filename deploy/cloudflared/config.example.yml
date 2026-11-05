@@ -1,0 +1,13 @@
+# Cloudflare Tunnel configuration. Copy to config.yml (gitignored) and set your own hostnames.
+# The agent listens on 127.0.0.1 only. The tunnel is the only route in from the internet,
+# and Cloudflare Access must sit in front of it (see docs/runbooks/public-access.md).
+tunnel: REPLACE-WITH-TUNNEL-UUID
+credentials-file: C:/Users/ACER/.cloudflared/REPLACE-WITH-TUNNEL-UUID.json
+
+ingress:
+  - hostname: agent.example.com
+    service: http://127.0.0.1:5000
+    originRequest:
+      connectTimeout: 10s
+      noTLSVerify: false
+  - service: http_status:404
