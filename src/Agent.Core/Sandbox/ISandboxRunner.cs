@@ -18,12 +18,14 @@ public interface ISandboxRunner
 /// <param name="WorkspacePath">Host folder mounted read-write at <c>/work</c>. Nothing else is shared.</param>
 /// <param name="Timeout">Hard limit. The container is killed when it expires.</param>
 /// <param name="AllowNetwork">Off by default. Only generated tools with a declared network permission may enable it.</param>
+/// <param name="Variables">The only environment variables the container receives. The host environment is never passed.</param>
 public sealed record SandboxRequest(
     string Image,
     IReadOnlyList<string> Arguments,
     string WorkspacePath,
     TimeSpan Timeout,
-    bool AllowNetwork = false);
+    bool AllowNetwork = false,
+    IReadOnlyDictionary<string, string>? Variables = null);
 
 /// <summary>Outcome of one isolated run.</summary>
 public sealed record SandboxResult(int? ExitCode, string Stdout, string Stderr, bool TimedOut);

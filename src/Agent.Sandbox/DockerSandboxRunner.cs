@@ -95,9 +95,18 @@ public sealed class DockerSandboxRunner(IReadOnlySet<string> allowedImages, stri
             "--user", "1000:1000",
             "--workdir", WorkspaceMount,
             "-v", $"{workspace}:{WorkspaceMount}:rw",
-            request.Image,
         };
 
+        if (request.Variables is not null)
+        {
+            foreach (var (key, value) in request.Variables)
+            {
+                args.Add("-e");
+                args.Add($"{key}={value}");
+            }
+        }
+
+        args.Add(request.Image);
         args.AddRange(request.Arguments);
         return args;
     }
