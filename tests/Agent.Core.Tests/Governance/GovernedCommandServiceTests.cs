@@ -123,6 +123,24 @@ public sealed class GovernedCommandServiceTests
             service.DecideAsync(Guid.CreateVersion7(), approve: true, "approver", null, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task FR97ApprovalOfAnotherKindIsRefusedAndNothingRuns()
+    {
+        var shell = new RecordingShell();
+        var approvals = new InMemoryApprovalStore();
+        var service = new GovernedCommandService(shell, new InMemoryAuditLog(), approvals, new FakeClock(Start));
+        var planId = Guid.CreateVersion7();
+        await approvals.AddAsync(
+            new ApprovalRequest(planId, "workflow.plan", "run-1", "[]", ApprovalStatus.Pending, Start, Start.AddHours(24), null, null),
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<ApprovalStateException>(() =>
+            service.DecideAsync(planId, approve: true, "approver", null, CancellationToken.None));
+
+        Assert.Equal(0, shell.Runs);
+        Assert.Equal(ApprovalStatus.Pending, (await approvals.GetAsync(planId, CancellationToken.None))!.Status);
+    }
+
     private static GovernedCommandService Build(
         RecordingShell shell,
         InMemoryAuditLog audit,
