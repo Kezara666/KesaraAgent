@@ -1,0 +1,5 @@
+# Core must not reach the process, network, or environment directly.
+# Adapters and the sandbox own these capabilities.
+T:System.Diagnostics.Process;Use an ISandbox port instead of starting processes from Core.
+T:System.Net.Sockets.Socket;Use a port instead of raw sockets from Core.
+M:System.Environment.GetEnvironmentVariable(System.String);Read configuration through the host, not from Core.

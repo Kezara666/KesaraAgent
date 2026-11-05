@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+.vs/
+.vscode/*
+!.vscode/extensions.json
+
+# Test and coverage
+TestResults/
+coverage/
+*.trx
+
+# Secrets and local state
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+logs/
+backups/
+
+# Tool Forge staging is local until promoted
+tools/staging/
+
+# OS and editor noise
+Thumbs.db
+.DS_Store
