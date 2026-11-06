@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "7 days",
+  "nuget": { "enabled": true },
+  "npm": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "Group Microsoft and EF Core updates into one reviewable PR",
+      "matchPackagePatterns": ["^Microsoft\.", "^Npgsql"],
+      "groupName": "dotnet platform"
+    }
+  ]
+}
