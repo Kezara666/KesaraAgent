@@ -1,5 +1,6 @@
 using Agent.Core.Approvals;
 using Agent.Core.Audit;
+using Agent.Core.Devices;
 using Agent.Core.Governance;
 using Agent.Core.Llm;
 using Agent.Core.Ports;
@@ -70,6 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GovernedCommandService>();
 
         services.AddSingleton<IWorkflowStore, EfWorkflowStore>();
+        services.AddSingleton<IDeviceStore, EfDeviceStore>();
         services.AddSingleton<IToolCompiler, RoslynToolCompiler>();
         services.AddSingleton<IToolRepository>(_ => new FileToolRepository(Path.GetFullPath(toolsRoot)));
         services.AddSingleton<IToolHistory>(_ => new GitToolHistory(Directory.GetCurrentDirectory()));

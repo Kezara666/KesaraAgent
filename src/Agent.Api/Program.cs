@@ -3,12 +3,14 @@ using Agent.Api.Auth;
 using Agent.Api.Endpoints;
 using Agent.Api.Workers;
 using Agent.Core.Approvals;
+using Agent.Core.Devices;
 using Agent.Core.Sandbox;
 using Agent.Core.Shell;
 using Agent.Core.Tasks;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
 using Agent.Infrastructure;
+using Agent.Infrastructure.Devices;
 using Agent.Infrastructure.Llm;
 using Agent.Infrastructure.Mcp;
 using Agent.Infrastructure.Persistence;
@@ -65,6 +67,11 @@ builder.Services.AddSingleton<WorkflowRunner>();
 builder.Services.AddSingleton<WorkflowService>();
 builder.Services.AddSingleton<ToolForgeService>();
 builder.Services.AddSingleton<ApprovalDecisionRouter>();
+
+// Devices. Each device is reached over HTTP with a short timeout. Nothing reaches a device except through the command
+// service, which applies the safety tier and approval rules.
+builder.Services.AddSingleton<IDeviceTransport>(_ => new HttpDeviceTransport(new HttpClient { Timeout = TimeSpan.FromSeconds(5) }));
+builder.Services.AddSingleton<DeviceCommandService>();
 
 builder.Services.AddAgentHeadless(
     builder.Configuration["Agent:Notifications:NtfyBaseUrl"],
@@ -129,6 +136,7 @@ app.MapWorkspaceEndpoints();
 app.MapApprovalEndpoints();
 app.MapWorkflowEndpoints();
 app.MapToolEndpoints();
+app.MapDeviceEndpoints();
 app.MapAuditEndpoints();
 app.MapScheduleEndpoints();
 app.MapTokenEndpoints();
