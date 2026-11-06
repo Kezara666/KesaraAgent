@@ -27,6 +27,6 @@ Run build, test, and format check before reporting a task as done.
 Status: see docs/status.md for the full branch table, test results, and open items.
 
 - All planned branches are merged to `main` except `feat/devices`, which is deferred by request.
-- Top open items: approved shell commands still run on the host (route them through `Agent.Sandbox`); unify the approval decision router for plans and promotions; verify the Windows service, Cloudflare tunnel, and GitHub workflows on your accounts.
+- Top open items: the sandbox image for PowerShell is not configured by default; unify the approval decision router for plans and promotions; verify the Windows service, Cloudflare tunnel, and GitHub workflows on your accounts.
 - Schema: PostgreSQL uses EF migrations. SQLite (dev and tests) uses EnsureCreated; delete an old local `agent.db` after schema changes.
 - Never push or commit without being asked.

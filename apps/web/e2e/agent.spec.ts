@@ -50,7 +50,7 @@ test('diff: an exact edit shows the diff for review', async ({ page }) => {
 test('approvals: a held command appears and can be approved', async ({ page, request }) => {
   const held = await request.post(`${API}/api/v1/workspace/commands`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
-    data: { command: 'hostname', shell: process.platform === 'win32' ? 'powershell' : 'bash' },
+    data: { command: 'hostname', shell: 'bash' },
   });
   expect(held.status()).toBe(202);
 
