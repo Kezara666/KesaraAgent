@@ -11,7 +11,7 @@ public sealed class ApprovalAuditApiTests(ApiFactory factory) : IClassFixture<Ap
     public async Task FR34HeldCommandReturns202ThenApprovalRunsItOnce()
     {
         using var client = AuthorizedClient();
-        var shell = OperatingSystem.IsWindows() ? "powershell" : "bash";
+        const string shell = "bash";
 
         var submit = await client.PostAsJsonAsync("/api/v1/workspace/commands", new { command = "hostname", shell });
         Assert.Equal(HttpStatusCode.Accepted, submit.StatusCode);

@@ -52,7 +52,7 @@ public sealed class WorkspaceApiTests(ApiFactory factory) : IClassFixture<ApiFac
         Directory.CreateDirectory(factory.WorkspaceRoot);
         using var client = AuthorizedClient();
 
-        var shell = OperatingSystem.IsWindows() ? "powershell" : "bash";
+        const string shell = "bash";
         var response = await client.PostAsJsonAsync("/api/v1/workspace/commands", new
         {
             command = "echo gate-ok",

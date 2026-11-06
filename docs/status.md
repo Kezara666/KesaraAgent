@@ -24,7 +24,7 @@ Test counts come from full runs on `main`.
 | feat/workspace-tools | Merged | Diff returned; denied command refused | FR-3.5 git checkpoint not built |
 | feat/llm-gateway | Merged | Fallback on 429 and 5xx; budgets persisted | Retry within a profile is not built |
 | feat/policy-audit | Merged | Denied and held commands audited; approvals expire | Single approver identity |
-| feat/sandbox | Merged | 8 of 8 escape tests against real containers | **Approved shell commands still run on the host** |
+| feat/sandbox | Merged | 8 of 8 escape tests against real containers | Shell commands routed to the sandbox in feat/sandbox-shell |
 | feat/tool-forge | Merged | Real restore and test in containers; promotion commit | Promotion decision method exists but the API does not expose it |
 | feat/workflows | Merged | Retry without duplicate send; resume; cancel; approval hold | Templates (FR-9.14) not built; invoker must honor the key |
 | feat/mcp-tools | Merged | Real MCP server over stdio; host secrets blanked | No Gmail server (needs your OAuth setup) |
@@ -42,8 +42,7 @@ Test counts come from full runs on `main`.
 
 ## Open items, in priority order
 
-1. **Route approved shell commands through the sandbox.** Policy and approvals run first, but an approved command still
-   executes on the host. This is the largest remaining security gap.
+1. ~~Route approved shell commands through the sandbox.~~ Done in feat/sandbox-shell. Commands now run in the Docker sandbox. PowerShell needs a configured image.
 2. **Unified approval decision router.** The API decides held commands only. Plans (`workflow.plan`) and promotions
    (`tool.promote`) need their own routing so the UI can approve them.
 3. **Run the Windows service install** and the Cloudflare tunnel with your accounts; both are documented, neither verified here.

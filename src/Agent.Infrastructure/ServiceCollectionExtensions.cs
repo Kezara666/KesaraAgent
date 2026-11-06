@@ -4,13 +4,11 @@ using Agent.Core.Governance;
 using Agent.Core.Llm;
 using Agent.Core.Ports;
 using Agent.Core.Security;
-using Agent.Core.Shell;
 using Agent.Core.Tasks;
 using Agent.Core.Workspace;
 using Agent.Infrastructure.Llm;
 using Agent.Infrastructure.Persistence;
 using Agent.Infrastructure.Queue;
-using Agent.Infrastructure.Shell;
 using Agent.Infrastructure.Workspace;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +56,6 @@ public static class ServiceCollectionExtensions
             serviceProvider.GetRequiredService<TimeProvider>()));
 
         services.AddSingleton<IWorkspaceFileSystem>(_ => new LocalWorkspaceFileSystem(workspaceRoot));
-        services.AddSingleton<IShellRunner>(_ => new ProcessShellRunner(Path.GetFullPath(workspaceRoot)));
         services.AddSingleton<WorkspaceService>();
 
         services.AddSingleton<IAuditLog, EfAuditLog>();
