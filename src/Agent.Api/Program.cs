@@ -55,6 +55,7 @@ var mcpServers = builder.Configuration.GetSection("Agent:McpServers").Get<List<M
 var mcpGateway = await McpToolGateway.ConnectAsync(mcpServers, CancellationToken.None);
 builder.Services.AddSingleton(mcpGateway);
 builder.Services.AddSingleton<IToolCatalog>(mcpGateway);
+builder.Services.AddSingleton<IToolListing>(mcpGateway);
 builder.Services.AddSingleton<IToolInvoker>(mcpGateway);
 builder.Services.AddSingleton<IToolTestRunner>(provider => new SandboxToolTestRunner(
     provider.GetRequiredService<ISandboxRunner>(),

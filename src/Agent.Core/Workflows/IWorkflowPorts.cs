@@ -6,6 +6,12 @@ public interface IToolCatalog
     ToolDescriptor? Find(string name);
 }
 
+/// <summary>Lists every registered tool, for the tool browser. The planner still sees only what the catalog allows.</summary>
+public interface IToolListing
+{
+    IReadOnlyList<ToolDescriptor> List();
+}
+
 /// <summary>Runs one registered tool with resolved inputs. Adapters route to built-in, MCP, or sandboxed tools.</summary>
 public interface IToolInvoker
 {
