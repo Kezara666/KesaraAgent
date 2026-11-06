@@ -68,6 +68,19 @@ public sealed class WorkflowToolApiTests(ApiFactory factory) : IClassFixture<Api
     }
 
     [Fact]
+    public async Task FR51ToolListIsReturnedAndEmptyWhenNoServerIsConfigured()
+    {
+        using var client = AuthorizedClient();
+
+        var response = await client.GetAsync("/api/v1/tools");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Array, body.ValueKind);
+        Assert.Empty(body.EnumerateArray());
+    }
+
+    [Fact]
     public async Task FR54DecidingAnUnknownApprovalIsReportedAsNotFound()
     {
         using var client = AuthorizedClient();

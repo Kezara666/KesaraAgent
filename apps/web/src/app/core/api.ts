@@ -46,6 +46,12 @@ export interface ScheduleView {
   enabled: boolean;
 }
 
+export interface ToolView {
+  name: string;
+  sideEffect: 'ReadOnly' | 'Write' | 'ExternalSend';
+  requiredInputs: string[];
+}
+
 /** Typed client for the agent API. Calls use a relative base path, and the interceptor adds the token. */
 @Injectable({ providedIn: 'root' })
 export class AgentApi {
@@ -90,6 +96,10 @@ export class AgentApi {
 
   listSchedules(): Observable<ScheduleView[]> {
     return this.http.get<ScheduleView[]>(`${this.base}/schedules`);
+  }
+
+  listTools(): Observable<ToolView[]> {
+    return this.http.get<ToolView[]>(`${this.base}/tools`);
   }
 }
 

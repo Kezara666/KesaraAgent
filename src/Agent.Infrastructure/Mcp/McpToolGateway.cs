@@ -8,7 +8,7 @@ namespace Agent.Infrastructure.Mcp;
 /// Connects to configured MCP servers and exposes their declared tools to workflows. A server that fails to
 /// start is marked unavailable, and only its tools fail. Other tools keep working (FR-10.1, FR-10.5).
 /// </summary>
-public sealed class McpToolGateway : IToolCatalog, IToolInvoker, IAsyncDisposable
+public sealed class McpToolGateway : IToolCatalog, IToolInvoker, IToolListing, IAsyncDisposable
 {
     private readonly Dictionary<string, Registration> tools = new(StringComparer.Ordinal);
     private readonly List<McpClient> clients = [];
@@ -34,6 +34,10 @@ public sealed class McpToolGateway : IToolCatalog, IToolInvoker, IAsyncDisposabl
     }
 
     public ToolDescriptor? Find(string name) => tools.TryGetValue(name, out var registration) ? registration.Descriptor : null;
+
+    public IReadOnlyList<ToolDescriptor> List() => tools.Values.Select(registration => registration.Descriptor)
+        .OrderBy(descriptor => descriptor.Name, StringComparer.Ordinal)
+        .ToList();
 
     public async Task<string> InvokeAsync(string tool, IReadOnlyDictionary<string, string> inputs, string idempotencyKey, CancellationToken cancellationToken)
     {

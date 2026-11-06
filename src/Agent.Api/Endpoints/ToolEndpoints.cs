@@ -1,5 +1,6 @@
 using Agent.Api.Auth;
 using Agent.Core.ToolForge;
+using Agent.Core.Workflows;
 
 namespace Agent.Api.Endpoints;
 
@@ -14,8 +15,18 @@ public static class ToolEndpoints
             .WithName("ForgeTool")
             .WithSummary("Generate, compile, test, and promote a tool. Read-only tools promote automatically; others wait for approval.");
 
+        group.MapGet("/", ListAsync)
+            .RequireAuthorization(ApiPolicies.Read)
+            .WithName("ListTools")
+            .WithSummary("Every tool the planner can use, with its side effect and required inputs.");
+
         return app;
     }
+
+    private static IResult ListAsync(IToolListing listing) =>
+        Results.Ok(listing.List()
+            .Select(tool => new ToolResponse(tool.Name, tool.SideEffect.ToString(), tool.RequiredInputs))
+            .ToList());
 
     private static async Task<IResult> ForgeAsync(
         ForgeRequest request,
@@ -62,6 +73,8 @@ public static class ToolEndpoints
         }
     }
 }
+
+public sealed record ToolResponse(string Name, string SideEffect, IReadOnlyList<string> RequiredInputs);
 
 public sealed record ForgeRequest(string? Name, string? Domain, string? Purpose, string? SideEffect, bool NeedsNetwork);
 
