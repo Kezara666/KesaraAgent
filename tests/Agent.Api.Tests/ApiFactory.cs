@@ -24,7 +24,20 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
-        builder.UseSetting("Agent:DatabasePath", databasePath);
+
+        // AGENT_TEST_POSTGRES runs the whole API suite against a PostgreSQL server instead of SQLite.
+        var postgres = Environment.GetEnvironmentVariable("AGENT_TEST_POSTGRES");
+        if (!string.IsNullOrWhiteSpace(postgres))
+        {
+            builder.UseSetting("Agent:Database:Provider", "postgres");
+            builder.UseSetting("Agent:Database:ConnectionString", postgres);
+        }
+        else
+        {
+            builder.UseSetting("Agent:DatabasePath", databasePath);
+        }
+
+
         builder.UseSetting("Agent:ApiTokenSha256", TestTokenHash);
         builder.UseSetting("Agent:WorkspaceRoot", WorkspaceRoot);
     }

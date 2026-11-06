@@ -26,12 +26,22 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddAgentInfrastructure(
         this IServiceCollection services,
-        string sqliteConnectionString,
+        DatabaseOptions database,
         string workspaceRoot,
         IReadOnlyList<ProviderOptions> providerOptions,
         IReadOnlyList<ModelProfileOptions> profileOptions)
     {
-        services.AddDbContextFactory<AgentDbContext>(options => options.UseSqlite(sqliteConnectionString));
+        services.AddDbContextFactory<AgentDbContext>(options =>
+        {
+            if (database.IsPostgres)
+            {
+                options.UseNpgsql(database.ConnectionString);
+            }
+            else
+            {
+                options.UseSqlite(database.ConnectionString);
+            }
+        });
 
         services.AddSingleton<ITaskStore, EfTaskStore>();
         services.AddSingleton<ITaskDispatcher, ChannelTaskDispatcher>();
