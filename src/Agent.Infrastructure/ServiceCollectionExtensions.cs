@@ -57,7 +57,8 @@ public static class ServiceCollectionExtensions
             BuildProfiles(profileOptions),
             BuildProviders(providerOptions),
             serviceProvider.GetRequiredService<IUsageLedger>(),
-            serviceProvider.GetRequiredService<TimeProvider>()));
+            serviceProvider.GetRequiredService<TimeProvider>(),
+            serviceProvider.GetService<IQuotaAlerts>()));
 
         services.AddSingleton<IWorkspaceFileSystem>(_ => new LocalWorkspaceFileSystem(workspaceRoot));
         services.AddSingleton<WorkspaceService>();
@@ -86,7 +87,8 @@ public static class ServiceCollectionExtensions
                 profile.SupportsToolCalling,
                 profile.ContextTokens,
                 profile.DailyTokenBudget,
-                profile.Enabled))
+                profile.Enabled,
+                profile.MaxAttempts))
             .ToList();
 
         profiles.Add(new ModelProfile(

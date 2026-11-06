@@ -1,0 +1,7 @@
+# Sandbox image for PowerShell commands. The runner calls `pwsh` inside this image.
+# Build: docker build -f deploy/sandbox/Dockerfile.powershell -t kesara-agent/sandbox-pwsh:1 deploy/sandbox
+# Then set Agent:Sandbox:PowerShellImage to kesara-agent/sandbox-pwsh:1.
+FROM mcr.microsoft.com/powershell:7.4-alpine-3.20
+
+RUN apk add --no-cache git \
+ && adduser -D -u 1000 sandbox

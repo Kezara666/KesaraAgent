@@ -1,0 +1,7 @@
+# Sandbox image for bash commands that need the .NET SDK or git, for example the dotnet and git commands allowlisted by
+# CommandPolicy. The default bash image (alpine) has neither.
+# Build: docker build -f deploy/sandbox/Dockerfile.bash-tools -t kesara-agent/sandbox-bash:1 deploy/sandbox
+# Then set Agent:Sandbox:BashImage to kesara-agent/sandbox-bash:1.
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine
+
+RUN apk add --no-cache git bash

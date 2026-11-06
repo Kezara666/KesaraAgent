@@ -11,10 +11,19 @@ public sealed class LlmRouter(
     IReadOnlyList<ModelProfile> profiles,
     IEnumerable<IModelProvider> providers,
     IUsageLedger ledger,
-    TimeProvider clock) : ILlmClient
+    TimeProvider clock,
+    IQuotaAlerts? alerts = null,
+    TimeSpan? retryDelay = null) : ILlmClient
 {
+    public const int MaxAttemptsLimit = 5;
+
     private readonly Dictionary<string, IModelProvider> providersById =
         providers.ToDictionary(provider => provider.ProviderId, StringComparer.Ordinal);
+
+    private readonly TimeSpan retryBackoff = retryDelay ?? TimeSpan.FromMilliseconds(500);
+
+    // Profile and day pairs that already raised a quota alert, so a person is told once per profile per day.
+    private readonly HashSet<string> alertedToday = new(StringComparer.Ordinal);
 
     public async Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken)
     {
@@ -44,24 +53,63 @@ public sealed class LlmRouter(
                 continue;
             }
 
-            try
+            var limit = Math.Clamp(profile.MaxAttempts, 1, MaxAttemptsLimit);
+            for (var attempt = 1; attempt <= limit; attempt++)
             {
-                var reply = await provider.CompleteAsync(profile.Model, request.Prompt, cancellationToken)
-                    .ConfigureAwait(false);
+                try
+                {
+                    var reply = await provider.CompleteAsync(profile.Model, request.Prompt, cancellationToken)
+                        .ConfigureAwait(false);
 
-                var tokens = reply.InputTokens + reply.OutputTokens;
-                await ledger.AddAsync(profile.Id, today, tokens, cancellationToken).ConfigureAwait(false);
+                    var tokens = reply.InputTokens + reply.OutputTokens;
+                    await ledger.AddAsync(profile.Id, today, tokens, cancellationToken).ConfigureAwait(false);
+                    await MaybeAlertAsync(profile, today, used + tokens, cancellationToken).ConfigureAwait(false);
 
-                return new LlmResponse(reply.Text, profile.Id, profile.Model, tokens);
-            }
-            catch (ProviderException exception)
-            {
-                // Record the kind only. The message may contain provider details.
-                attempts.Add($"{profile.Id}:{exception.Kind}");
+                    return new LlmResponse(reply.Text, profile.Id, profile.Model, tokens);
+                }
+                catch (ProviderException exception) when (IsTransient(exception.Kind) && attempt < limit)
+                {
+                    // Throttling and server errors may clear on their own, so the same profile is tried again.
+                    await Task.Delay(retryBackoff * attempt, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ProviderException exception)
+                {
+                    // Record the kind only. The message may contain provider details.
+                    attempts.Add($"{profile.Id}:{exception.Kind}");
+                    break;
+                }
             }
         }
 
         throw new LlmUnavailableException(attempts);
+    }
+
+    private static bool IsTransient(ProviderFailureKind kind) =>
+        kind is ProviderFailureKind.RateLimited or ProviderFailureKind.Unavailable;
+
+    private async Task MaybeAlertAsync(ModelProfile profile, DateOnly today, long usedAfterCall, CancellationToken cancellationToken)
+    {
+        if (alerts is null || profile.DailyTokenBudget <= 0 || usedAfterCall * 100 < profile.DailyTokenBudget * 80)
+        {
+            return;
+        }
+
+        lock (alertedToday)
+        {
+            if (!alertedToday.Add($"{profile.Id}|{today:yyyy-MM-dd}"))
+            {
+                return;
+            }
+        }
+
+        try
+        {
+            await alerts.RaiseAsync(profile.Id, usedAfterCall, profile.DailyTokenBudget, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // An alert that cannot be sent must never fail the answer the person is waiting for.
+        }
     }
 
     private static bool IsEligible(ModelProfile profile, LlmRequest request, int estimatedPromptTokens) =>

@@ -16,4 +16,7 @@ public sealed class ModelProfileOptions
     public long DailyTokenBudget { get; set; } = 100_000;
 
     public bool Enabled { get; set; } = true;
+
+    /// <summary>Tries for rate-limit and server failures on this profile before the next profile is used.</summary>
+    public int MaxAttempts { get; set; } = 1;
 }

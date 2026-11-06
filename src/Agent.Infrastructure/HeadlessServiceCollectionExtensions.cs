@@ -1,4 +1,5 @@
 using Agent.Core.Headless;
+using Agent.Core.Llm;
 using Agent.Core.Notifications;
 using Agent.Infrastructure.Notifications;
 using Agent.Infrastructure.Persistence;
@@ -15,6 +16,7 @@ public static class HeadlessServiceCollectionExtensions
         services.AddSingleton<IScheduledJobRunner, TaskJobRunner>();
         services.AddSingleton<SchedulerService>();
         services.AddSingleton<SafeModeController>();
+        services.AddSingleton<IQuotaAlerts, NotifierQuotaAlerts>();
 
         if (string.IsNullOrWhiteSpace(ntfyTopic))
         {

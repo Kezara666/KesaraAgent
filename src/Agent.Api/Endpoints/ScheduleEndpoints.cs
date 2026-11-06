@@ -26,8 +26,15 @@ public static class ScheduleEndpoints
             .RequireAuthorization(ApiPolicies.Read)
             .WithName("ListSchedules");
 
+        group.MapGet("/templates", Templates)
+            .RequireAuthorization(ApiPolicies.Read)
+            .WithName("ListScheduleTemplates")
+            .WithSummary("Ready-made schedules. Save one with POST /api/v1/schedules after reviewing its preview.");
+
         return app;
     }
+
+    private static Ok<IReadOnlyList<ScheduleTemplate>> Templates() => TypedResults.Ok(ScheduleTemplates.All);
 
     private static Results<Ok<PreviewResponse>, ProblemHttpResult> Preview(PreviewRequest request)
     {
