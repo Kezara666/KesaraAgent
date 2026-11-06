@@ -59,6 +59,13 @@ public sealed class GovernedCommandService(
         var request = await approvals.GetAsync(approvalId, cancellationToken).ConfigureAwait(false)
             ?? throw new ApprovalNotFoundException(approvalId);
 
+        // Only held commands run through this path. Plans and promotions are decided by their own services,
+        // so approving them here would try to read them as commands.
+        if (request.Kind != "command")
+        {
+            throw new ApprovalStateException("This approval is decided by its own workflow, not by the command path.");
+        }
+
         if (request.Status != ApprovalStatus.Pending)
         {
             throw new ApprovalStateException($"The approval is {request.Status}, not pending.");
