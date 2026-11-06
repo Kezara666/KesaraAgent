@@ -20,9 +20,9 @@ public sealed class SandboxToolTestRunnerTests : IDisposable
         {
             Directory.Delete(scratch, recursive: true);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // Temp cleanup by the OS if a handle is still open.
+            // Temp cleanup by the OS if a handle is still open or the container user owns a file.
         }
     }
 
