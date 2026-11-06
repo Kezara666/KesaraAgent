@@ -1,3 +1,4 @@
+using Agent.Api.Auditing;
 using Agent.Api.Auth;
 using Agent.Api.Endpoints;
 using Agent.Api.Workers;
@@ -21,7 +22,8 @@ builder.Services.AddAuthentication(ApiTokenAuthenticationHandler.SchemeName)
 
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(ApiPolicies.Read, policy => policy.RequireClaim(ApiTokenAuthenticationHandler.ScopeClaimType, ApiScopes.Read, ApiScopes.Act, ApiScopes.Admin))
-    .AddPolicy(ApiPolicies.Act, policy => policy.RequireClaim(ApiTokenAuthenticationHandler.ScopeClaimType, ApiScopes.Act, ApiScopes.Admin));
+    .AddPolicy(ApiPolicies.Act, policy => policy.RequireClaim(ApiTokenAuthenticationHandler.ScopeClaimType, ApiScopes.Act, ApiScopes.Admin))
+    .AddPolicy(ApiPolicies.Admin, policy => policy.RequireClaim(ApiTokenAuthenticationHandler.ScopeClaimType, ApiScopes.Admin));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -29,16 +31,15 @@ builder.Services.AddHostedService<TaskWorker>();
 
 var app = builder.Build();
 
-// Schema is created on startup for this branch. Versioned migrations arrive with infra/postgres.
 using (var scope = app.Services.CreateScope())
 {
     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AgentDbContext>>();
-    await using var db = await factory.CreateDbContextAsync();
-    await db.Database.EnsureCreatedAsync();
+    await DatabaseInitializer.EnsureSchemaAsync(factory, CancellationToken.None);
 }
 
 app.UseExceptionHandler();
 app.UseAuthentication();
+app.UseMiddleware<ApiAuditMiddleware>();
 app.UseAuthorization();
 
 app.MapOpenApi();
@@ -58,6 +59,8 @@ app.MapGet("/health/ready", async (TaskService service, CancellationToken cancel
 
 app.MapTaskEndpoints();
 app.MapWorkspaceEndpoints();
+app.MapApprovalEndpoints();
+app.MapAuditEndpoints();
 
 app.Run();
 

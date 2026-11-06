@@ -78,4 +78,5 @@ public static class ApiPolicies
 {
     public const string Read = "read";
     public const string Act = "act";
+    public const string Admin = "admin";
 }
