@@ -1,7 +1,7 @@
 namespace Agent.Core.Workspace;
 
 /// <summary>Read, search, and edit operations on the workspace (FR-3.1, FR-3.2). Commands are governed elsewhere.</summary>
-public sealed class WorkspaceService(IWorkspaceFileSystem files)
+public sealed class WorkspaceService(IWorkspaceFileSystem files, IWorkspaceCheckpoints? checkpoints = null)
 {
     public const int MaxSearchResults = 200;
 
@@ -43,12 +43,17 @@ public sealed class WorkspaceService(IWorkspaceFileSystem files)
         var before = await files.ReadTextAsync(relativePath, cancellationToken).ConfigureAwait(false);
         var after = PatchApplier.ApplySingle(before, search, replace);
 
+        // The checkpoint is taken before the write, so the workspace can always be restored to this exact state.
+        var checkpointId = checkpoints is null
+            ? null
+            : await checkpoints.CreateAsync($"before edit to {relativePath}", cancellationToken).ConfigureAwait(false);
+
         await files.WriteTextAsync(relativePath, after, cancellationToken).ConfigureAwait(false);
 
-        return new EditResult(relativePath, PatchApplier.UnifiedDiff(relativePath, before, after));
+        return new EditResult(relativePath, PatchApplier.UnifiedDiff(relativePath, before, after), checkpointId);
     }
 }
 
 public sealed record SearchHit(string Path, int Line, string Text);
 
-public sealed record EditResult(string Path, string Diff);
+public sealed record EditResult(string Path, string Diff, string? CheckpointId = null);
