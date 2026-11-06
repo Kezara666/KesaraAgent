@@ -240,6 +240,66 @@ namespace Agent.Infrastructure.Persistence.Migrations
 
                     b.ToTable("usage", (string)null);
                 });
+
+            modelBuilder.Entity("Agent.Infrastructure.Persistence.WorkflowRunRow", b =>
+                {
+                    b.Property<string>("RunId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("FailedStep")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlanJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("RunId");
+
+                    b.ToTable("workflow_runs", (string)null);
+                });
+
+            modelBuilder.Entity("Agent.Infrastructure.Persistence.WorkflowStepRow", b =>
+                {
+                    b.Property<string>("RunId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("StepId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Output")
+                        .IsRequired()
+                        .HasMaxLength(16384)
+                        .HasColumnType("character varying(16384)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("RunId", "StepId");
+
+                    b.ToTable("workflow_steps", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }
