@@ -28,6 +28,8 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
 
     public DbSet<WorkflowStepRow> WorkflowSteps => Set<WorkflowStepRow>();
 
+    public DbSet<DeviceRow> Devices => Set<DeviceRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskRow>(entity =>
@@ -122,6 +124,16 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
             entity.Property(step => step.Status).IsRequired().HasMaxLength(32);
             entity.Property(step => step.Output).IsRequired().HasMaxLength(16384);
             entity.Property(step => step.IdempotencyKey).HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<DeviceRow>(entity =>
+        {
+            entity.ToTable("devices");
+            entity.HasKey(device => device.Id);
+            entity.Property(device => device.Id).HasMaxLength(64);
+            entity.Property(device => device.Name).IsRequired().HasMaxLength(64);
+            entity.Property(device => device.Endpoint).IsRequired().HasMaxLength(512);
+            entity.Property(device => device.CapabilitiesJson).IsRequired();
         });
     }
 }

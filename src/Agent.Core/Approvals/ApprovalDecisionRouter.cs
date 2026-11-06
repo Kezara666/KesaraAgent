@@ -1,3 +1,4 @@
+using Agent.Core.Devices;
 using Agent.Core.Governance;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
@@ -12,7 +13,8 @@ public sealed class ApprovalDecisionRouter(
     IApprovalStore approvals,
     GovernedCommandService commands,
     WorkflowService workflows,
-    ToolForgeService toolForge)
+    ToolForgeService toolForge,
+    DeviceCommandService? devices = null)
 {
     public const string CommandKind = "command";
 
@@ -36,6 +38,9 @@ public sealed class ApprovalDecisionRouter(
                 break;
             case ToolForgeService.ApprovalKind:
                 await toolForge.DecideAsync(approvalId, approve, approver, cancellationToken).ConfigureAwait(false);
+                break;
+            case DeviceCommandService.ApprovalKind when devices is not null:
+                await devices.DecideAsync(approvalId, approve, approver, cancellationToken).ConfigureAwait(false);
                 break;
             default:
                 throw new ApprovalStateException($"No decision route exists for approvals of kind '{request.Kind}'.");

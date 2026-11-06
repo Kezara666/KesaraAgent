@@ -148,6 +148,31 @@ namespace Agent.Infrastructure.Persistence.Migrations
                     b.ToTable("audit", (string)null);
                 });
 
+            modelBuilder.Entity("Agent.Infrastructure.Persistence.DeviceRow", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CapabilitiesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("devices", (string)null);
+                });
+
             modelBuilder.Entity("Agent.Infrastructure.Persistence.ScheduleRow", b =>
                 {
                     b.Property<Guid>("Id")
