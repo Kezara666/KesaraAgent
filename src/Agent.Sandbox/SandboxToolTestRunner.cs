@@ -34,6 +34,13 @@ public sealed class SandboxToolTestRunner(ISandboxRunner sandbox, string image, 
         spec.Validate();
         var folder = Path.Combine(Path.GetFullPath(scratchRoot), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
+        if (OperatingSystem.IsLinux())
+        {
+            // The container user (uid 1000) must write restore output here. The folder is deleted after the run.
+            File.SetUnixFileMode(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute);
+        }
 
         try
         {
