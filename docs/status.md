@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: 2026-11-05. The status of each branch, what was verified and how, and what is still open.
+Last updated: 2026-11-06. The status of each branch, what was verified and how, and what is still open.
 Test counts come from full runs on `main`.
 
 ## Test results (main)
@@ -38,17 +38,23 @@ Test counts come from full runs on `main`.
 | ops/observability | Merged | Jaeger shows the service; Prometheus shows request metrics | No prebuilt dashboards |
 | ops/backup | Merged | Restore drill passed on a populated database | Off-site upload and retention not automated |
 | fix/approval-kind | Merged | Regression test for a real defect | Unified approval decision router not built |
-| feat/devices | **Not built** | Deferred by your request (IoT later) | Everything device-related |
+| feat/devices | Merged | Safety tiers, approval for reversible and safety-critical actions, failed devices recorded | No device authentication; no hardware tested |
 
 ## Open items, in priority order
 
-1. ~~Route approved shell commands through the sandbox.~~ Done in feat/sandbox-shell. Commands now run in the Docker sandbox. PowerShell needs a configured image.
-2. **Unified approval decision router.** The API decides held commands only. Plans (`workflow.plan`) and promotions
-   (`tool.promote`) need their own routing so the UI can approve them.
-3. **Run the Windows service install** and the Cloudflare tunnel with your accounts; both are documented, neither verified here.
-4. **Run the GitHub workflows** after pushing the repository.
-5. **Gmail MCP server** with your Google OAuth credentials.
-6. **Device layer** (`feat/devices`), when you want to start it.
+Done since the last update (each merged through its own PR with CI green): approval router for all kinds (PR #22),
+workflows and tool forge wired into the host (PR #22), per-model retry and 80% quota alert (PR #23), schedule templates
+(PR #23), backup pruning (PR #23), Grafana dashboard (PR #23), sandbox images for PowerShell and bash tools (PR #23),
+git checkpoint before every edit (PR #24), tool browser (PR #25), device layer (PR #26).
+
+Still open:
+
+1. **Run the Windows service install** and the Cloudflare tunnel with your accounts. Both are documented, neither verified here.
+2. **Gmail MCP server** needs your Google OAuth credentials.
+3. **Device authentication.** Devices get no credentials yet. Keep them on a trusted network until per-device credentials exist.
+4. **Grafana queries** are written to OpenTelemetry metric names but not checked against a running stack.
+5. **Restore for checkpoints.** Checkpoints are recorded (`refs/agent/checkpoints/`), but there is no restore endpoint yet.
+6. **Tool browser shows registered MCP tools only.** Promoted generated tools are not listed.
 
 ## How to reproduce
 
