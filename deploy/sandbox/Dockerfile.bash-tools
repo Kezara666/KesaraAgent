@@ -4,4 +4,7 @@
 # Then set Agent:Sandbox:BashImage to kesara-agent/sandbox-bash:1.
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine
 
-RUN apk add --no-cache git bash
+RUN apk add --no-cache git bash \
+ && adduser -D -u 1000 sandbox
+
+USER 1000:1000

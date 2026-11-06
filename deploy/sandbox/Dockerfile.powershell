@@ -5,3 +5,5 @@ FROM mcr.microsoft.com/powershell:7.4-alpine-3.20
 
 RUN apk add --no-cache git \
  && adduser -D -u 1000 sandbox
+
+USER 1000:1000
