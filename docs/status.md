@@ -34,7 +34,7 @@ Test counts come from full runs on `main`.
 | infra/queue | Merged | Queued and interrupted tasks recovered | Hangfire not used; full host restart not automated |
 | sec/ci | Merged | Gitleaks: no leaks in 14 commits; Trivy: no HIGH or CRITICAL | GitHub workflow files not run on GitHub |
 | sec/auth | Merged | Scoped tokens; revocation; secrecy of hashes; works on PostgreSQL | Bootstrap token still has every scope |
-| sec/public-access | Merged (configuration only) | Files and runbook written | **Not verified**: needs a Cloudflare account and a domain |
+| sec/public-access | Merged (configuration only) | Files and runbook written | Not run. Public access is out of scope at your request |
 | ops/observability | Merged | Jaeger shows the service; Prometheus shows request metrics | No prebuilt dashboards |
 | ops/backup | Merged | Restore drill passed on a populated database | Off-site upload and retention not automated |
 | fix/approval-kind | Merged | Regression test for a real defect | Unified approval decision router not built |
@@ -49,7 +49,7 @@ git checkpoint before every edit (PR #24), tool browser (PR #25), device layer (
 
 Still open:
 
-1. **Run the Windows service install** and the Cloudflare tunnel with your accounts. Both are documented, neither verified here.
+1. **Run the Windows service install** with admin rights. It is documented, not verified here. Public access (Cloudflare tunnel) is out of scope at your request.
 2. **Gmail MCP server** needs your Google OAuth credentials.
 3. **Device authentication.** Devices get no credentials yet. Keep them on a trusted network until per-device credentials exist.
 4. **Grafana queries** are written to OpenTelemetry metric names but not checked against a running stack.
