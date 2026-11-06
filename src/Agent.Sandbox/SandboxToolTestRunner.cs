@@ -100,9 +100,9 @@ public sealed class SandboxToolTestRunner(ISandboxRunner sandbox, string image, 
         {
             Directory.Delete(folder, recursive: true);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // The OS removes it later if a file is still held.
+            // Files the container user created may not be deletable by the host user. The OS removes the scratch folder later.
         }
     }
 }
