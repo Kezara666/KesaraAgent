@@ -20,6 +20,8 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
 
     public DbSet<ApprovalRow> Approvals => Set<ApprovalRow>();
 
+    public DbSet<ScheduleRow> Schedules => Set<ScheduleRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskRow>(entity =>
@@ -71,6 +73,16 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
             entity.Property(approval => approval.ResultSummary).HasMaxLength(256);
             entity.HasIndex(approval => approval.Status);
             entity.HasIndex(approval => approval.CreatedAt);
+        });
+
+        modelBuilder.Entity<ScheduleRow>(entity =>
+        {
+            entity.ToTable("schedules");
+            entity.HasKey(schedule => schedule.Id);
+            entity.Property(schedule => schedule.Name).IsRequired().HasMaxLength(64);
+            entity.Property(schedule => schedule.CronExpression).IsRequired().HasMaxLength(64);
+            entity.Property(schedule => schedule.Prompt).IsRequired().HasMaxLength(4000);
+            entity.Property(schedule => schedule.LastRunTicks);
         });
     }
 }
