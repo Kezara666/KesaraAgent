@@ -11,7 +11,10 @@ public static class PathGuard
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
 
-        if (Path.IsPathRooted(relativePath) || relativePath.StartsWith('/') || relativePath.StartsWith('\\'))
+        // Backslashes and colons are separators or drive markers on Windows. Refuse them on every platform,
+        // so a path that is safe on Linux cannot be used to escape when the workspace is opened on Windows.
+        if (Path.IsPathRooted(relativePath) || relativePath.StartsWith('/') || relativePath.StartsWith('\\')
+            || relativePath.Contains('\\', StringComparison.Ordinal) || relativePath.Contains(':', StringComparison.Ordinal))
         {
             throw new PathOutsideWorkspaceException(relativePath);
         }
