@@ -149,12 +149,97 @@ public sealed class LlmRouterTests
         bool supportsTools = true,
         int contextTokens = 100_000,
         long dailyBudget = 1_000_000,
-        bool enabled = true) =>
-        new(id, providerId, $"{id}-model", supportsTools, contextTokens, dailyBudget, enabled);
+        bool enabled = true,
+        int maxAttempts = 1) =>
+        new(id, providerId, $"{id}-model", supportsTools, contextTokens, dailyBudget, enabled, maxAttempts);
 
     private static LlmRouter Build(
         IReadOnlyList<ModelProfile> profiles,
         IReadOnlyList<IModelProvider> providers,
         InMemoryUsageLedger? ledger = null) =>
         new(profiles, providers, ledger ?? new InMemoryUsageLedger(), new FakeClock(Now));
+
+    [Fact]
+    public async Task FR42TransientFailureIsRetriedOnTheSameProfile()
+    {
+        var provider = new FlakyProvider("p1", failures: 1, ProviderFailureKind.RateLimited);
+        var router = new LlmRouter([Profile("a", "p1", maxAttempts: 3)], [provider], new InMemoryUsageLedger(), new FakeClock(Now), retryDelay: TimeSpan.Zero);
+
+        var response = await router.CompleteAsync(new LlmRequest("hello"), CancellationToken.None);
+
+        Assert.Equal("a", response.ProfileId);
+        Assert.Equal(2, provider.Calls);
+    }
+
+    [Fact]
+    public async Task FR42RejectedRequestIsNotRetried()
+    {
+        var provider = new FakeProvider("p1", failWith: ProviderFailureKind.Rejected);
+        var second = new FakeProvider("p2");
+        var router = new LlmRouter(
+            [Profile("a", "p1", maxAttempts: 3), Profile("b", "p2")],
+            [provider, second],
+            new InMemoryUsageLedger(),
+            new FakeClock(Now),
+            retryDelay: TimeSpan.Zero);
+
+        var response = await router.CompleteAsync(new LlmRequest("hello"), CancellationToken.None);
+
+        Assert.Equal("b", response.ProfileId);
+        Assert.Equal(1, provider.Calls);
+    }
+
+    [Fact]
+    public async Task NFR9QuotaAlertFiresOnceWhenAProfileReachesEightyPercentOfItsBudget()
+    {
+        var ledger = new InMemoryUsageLedger();
+        await ledger.AddAsync("a", Today, 70, CancellationToken.None);
+        var alerts = new RecordingAlerts();
+        var router = new LlmRouter(
+            [Profile("a", "p1", dailyBudget: 100)],
+            [new FakeProvider("p1")],
+            ledger,
+            new FakeClock(Now),
+            alerts,
+            retryDelay: TimeSpan.Zero);
+
+        await router.CompleteAsync(new LlmRequest("hello"), CancellationToken.None);
+        await router.CompleteAsync(new LlmRequest("hello"), CancellationToken.None);
+
+        var alert = Assert.Single(alerts.Raised);
+        Assert.Equal("a", alert.ProfileId);
+        Assert.Equal(85, alert.Used);
+        Assert.Equal(100, alert.Budget);
+    }
+
+    private sealed class FlakyProvider(string providerId, int failures, ProviderFailureKind kind) : IModelProvider
+    {
+        private int remaining = failures;
+
+        public string ProviderId { get; } = providerId;
+
+        public int Calls { get; private set; }
+
+        public Task<ProviderReply> CompleteAsync(string model, string prompt, CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (remaining-- > 0)
+            {
+                throw new ProviderException(kind, "transient");
+            }
+
+            return Task.FromResult(new ProviderReply("ok", 10, 5));
+        }
+    }
+
+    private sealed class RecordingAlerts : IQuotaAlerts
+    {
+        public List<(string ProfileId, long Used, long Budget)> Raised { get; } = [];
+
+        public Task RaiseAsync(string profileId, long usedTokens, long budgetTokens, CancellationToken cancellationToken)
+        {
+            Raised.Add((profileId, usedTokens, budgetTokens));
+            return Task.CompletedTask;
+        }
+    }
 }

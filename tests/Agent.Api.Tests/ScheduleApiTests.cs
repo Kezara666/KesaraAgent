@@ -52,6 +52,22 @@ public sealed class ScheduleApiTests(ApiFactory factory) : IClassFixture<ApiFact
         Assert.Contains(list.EnumerateArray(), item => item.GetProperty("name").GetString() == name);
     }
 
+    [Fact]
+    public async Task FR98EveryScheduleTemplateHasAValidCronAndCanBePreviewed()
+    {
+        using var client = AuthorizedClient();
+
+        var templates = await client.GetFromJsonAsync<JsonElement>("/api/v1/schedules/templates");
+
+        var items = templates.EnumerateArray().ToList();
+        Assert.Equal(3, items.Count);
+        foreach (var template in items)
+        {
+            var preview = await client.PostAsJsonAsync("/api/v1/schedules/preview", new { cron = template.GetProperty("cron").GetString(), count = 1 });
+            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        }
+    }
+
     private HttpClient AuthorizedClient()
     {
         var client = factory.CreateClient();

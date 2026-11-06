@@ -17,6 +17,7 @@ public sealed record LlmResponse(string Text, string ProfileId, string Model, lo
 /// <param name="ContextTokens">Largest prompt, in estimated tokens, the model accepts.</param>
 /// <param name="DailyTokenBudget">Tokens this profile may use per UTC day. Use <c>long.MaxValue</c> for unlimited.</param>
 /// <param name="Enabled">Disabled profiles are skipped without being removed from config.</param>
+/// <param name="MaxAttempts">Tries for rate-limit and server failures before the router moves to the next profile (1 to 5).</param>
 public sealed record ModelProfile(
     string Id,
     string ProviderId,
@@ -24,4 +25,5 @@ public sealed record ModelProfile(
     bool SupportsToolCalling,
     int ContextTokens,
     long DailyTokenBudget,
-    bool Enabled);
+    bool Enabled,
+    int MaxAttempts = 1);
