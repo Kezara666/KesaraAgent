@@ -6,6 +6,8 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
 {
     public DbSet<TaskRow> Tasks => Set<TaskRow>();
 
+    public DbSet<UsageRow> Usage => Set<UsageRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskRow>(entity =>
@@ -18,6 +20,14 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
             entity.Property(task => task.Error).HasMaxLength(256);
             entity.HasIndex(task => task.IdempotencyKey).IsUnique();
             entity.HasIndex(task => task.CreatedAt);
+        });
+
+        modelBuilder.Entity<UsageRow>(entity =>
+        {
+            entity.ToTable("usage");
+            entity.HasKey(usage => new { usage.ProfileId, usage.Day });
+            entity.Property(usage => usage.ProfileId).HasMaxLength(64);
+            entity.Property(usage => usage.Day).HasMaxLength(10);
         });
     }
 }
