@@ -72,6 +72,7 @@ app.MapWorkspaceEndpoints();
 app.MapApprovalEndpoints();
 app.MapAuditEndpoints();
 app.MapScheduleEndpoints();
+app.MapTokenEndpoints();
 
 app.Run();
 

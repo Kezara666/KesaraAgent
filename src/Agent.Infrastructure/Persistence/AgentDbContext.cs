@@ -22,6 +22,8 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
 
     public DbSet<ScheduleRow> Schedules => Set<ScheduleRow>();
 
+    public DbSet<ApiTokenRow> ApiTokens => Set<ApiTokenRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskRow>(entity =>
@@ -83,6 +85,17 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
             entity.Property(schedule => schedule.CronExpression).IsRequired().HasMaxLength(64);
             entity.Property(schedule => schedule.Prompt).IsRequired().HasMaxLength(4000);
             entity.Property(schedule => schedule.LastRunTicks);
+        });
+
+        modelBuilder.Entity<ApiTokenRow>(entity =>
+        {
+            entity.ToTable("api_tokens");
+            entity.HasKey(token => token.Id);
+            entity.Property(token => token.Name).IsRequired().HasMaxLength(64);
+            entity.Property(token => token.TokenHash).IsRequired().HasMaxLength(64);
+            entity.Property(token => token.Scopes).IsRequired().HasMaxLength(64);
+            entity.Property(token => token.CreatedAt).HasConversion(UtcTicks);
+            entity.HasIndex(token => token.TokenHash).IsUnique();
         });
     }
 }
