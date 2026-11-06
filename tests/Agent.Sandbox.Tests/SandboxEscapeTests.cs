@@ -119,8 +119,20 @@ public sealed class SandboxEscapeTests : IDisposable
     private Task<SandboxResult> Run(params string[] arguments) =>
         Run(TimeSpan.FromSeconds(60), arguments);
 
-    private Task<SandboxResult> Run(TimeSpan timeout, params string[] arguments) =>
-        runner.RunAsync(new SandboxRequest(Image, arguments, workspace, timeout), CancellationToken.None);
+    private Task<SandboxResult> Run(TimeSpan timeout, params string[] arguments)
+    {
+        // The container runs as uid 1000, which is not the host user that created the folder on Linux.
+        // The workspace is a throwaway test folder, so it is opened to that user for writing.
+        Directory.CreateDirectory(workspace);
+        if (OperatingSystem.IsLinux())
+        {
+            File.SetUnixFileMode(workspace, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute);
+        }
+
+        return runner.RunAsync(new SandboxRequest(Image, arguments, workspace, timeout), CancellationToken.None);
+    }
 
     private static void RequireDocker()
     {
