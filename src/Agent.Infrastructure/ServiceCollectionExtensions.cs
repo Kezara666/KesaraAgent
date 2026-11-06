@@ -61,6 +61,7 @@ public static class ServiceCollectionExtensions
             serviceProvider.GetService<IQuotaAlerts>()));
 
         services.AddSingleton<IWorkspaceFileSystem>(_ => new LocalWorkspaceFileSystem(workspaceRoot));
+        services.AddSingleton<IWorkspaceCheckpoints>(_ => new GitWorkspaceCheckpoints(Path.GetFullPath(workspaceRoot)));
         services.AddSingleton<WorkspaceService>();
 
         services.AddSingleton<IAuditLog, EfAuditLog>();
