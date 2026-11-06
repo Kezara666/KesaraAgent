@@ -29,8 +29,18 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      - name: Test
+      - name: Test (Linux, with Docker)
+        if: runner.os == 'Linux'
         run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=results.trx"
+
+      # The Windows runner has no Linux container engine and no bash, so these tests run only on the Linux job:
+      # the sandbox suites, the PostgreSQL suite (Testcontainers), and the API tests that run bash commands.
+      - name: Test (Windows, without Linux containers or bash)
+        if: runner.os == 'Windows'
+        run: >-
+          dotnet test --no-build --configuration Release
+          --filter "FullyQualifiedName!~Agent.Sandbox.Tests&FullyQualifiedName!~PostgresParityTests&FullyQualifiedName!~FR34AllowedCommandRunsInWorkspace&FullyQualifiedName!~FR34HeldCommandReturns"
+          --logger "trx;LogFileName=results.trx"
 
       - name: Vulnerable packages
         run: dotnet list package --vulnerable --include-transitive --format json
