@@ -14,6 +14,7 @@ public sealed class DockerSandboxRunner(IReadOnlySet<string> allowedImages, stri
     private const int MemoryMegabytes = 256;
     private const int ProcessLimit = 128;
     private const string WorkspaceMount = "/work";
+    private static readonly TimeSpan RemoveTimeout = TimeSpan.FromSeconds(15);
 
     public async Task<SandboxResult> RunAsync(SandboxRequest request, CancellationToken cancellationToken)
     {
@@ -67,6 +68,8 @@ public sealed class DockerSandboxRunner(IReadOnlySet<string> allowedImages, stri
         {
             timedOut = true;
             await RemoveContainerAsync(name).ConfigureAwait(false);
+            // The docker client may still be waiting on the removed container. Ending it releases the output readers.
+            TryKill(process);
         }
 
         return new SandboxResult(
@@ -127,7 +130,30 @@ public sealed class DockerSandboxRunner(IReadOnlySet<string> allowedImages, stri
         kill.StartInfo.ArgumentList.Add("-f");
         kill.StartInfo.ArgumentList.Add(name);
         kill.Start();
-        await kill.WaitForExitAsync().ConfigureAwait(false);
+        using var bound = new CancellationTokenSource(RemoveTimeout);
+        try
+        {
+            await kill.WaitForExitAsync(bound.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            TryKill(kill);
+        }
+    }
+
+    private static void TryKill(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // The process ended between the check and the kill.
+        }
     }
 
     private static void CopyIfPresent(ProcessStartInfo startInfo, string name)
