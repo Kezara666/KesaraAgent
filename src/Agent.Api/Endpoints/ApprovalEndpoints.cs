@@ -62,22 +62,22 @@ public static class ApprovalEndpoints
             : TypedResults.Ok(ApprovalResponse.From(request));
     }
 
-    private static Task<IResult> ApproveAsync(Guid id, HttpContext httpContext, GovernedCommandService service, CancellationToken cancellationToken) =>
-        Decide(id, approve: true, httpContext, service, cancellationToken);
+    private static Task<IResult> ApproveAsync(Guid id, HttpContext httpContext, ApprovalDecisionRouter router, CancellationToken cancellationToken) =>
+        Decide(id, approve: true, httpContext, router, cancellationToken);
 
-    private static Task<IResult> RejectAsync(Guid id, HttpContext httpContext, GovernedCommandService service, CancellationToken cancellationToken) =>
-        Decide(id, approve: false, httpContext, service, cancellationToken);
+    private static Task<IResult> RejectAsync(Guid id, HttpContext httpContext, ApprovalDecisionRouter router, CancellationToken cancellationToken) =>
+        Decide(id, approve: false, httpContext, router, cancellationToken);
 
     private static async Task<IResult> Decide(
         Guid id,
         bool approve,
         HttpContext httpContext,
-        GovernedCommandService service,
+        ApprovalDecisionRouter router,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await service.DecideAsync(
+            var result = await router.DecideAsync(
                     id,
                     approve,
                     httpContext.User.Identity?.Name ?? "anonymous",

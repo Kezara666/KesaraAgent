@@ -24,6 +24,10 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
 
     public DbSet<ApiTokenRow> ApiTokens => Set<ApiTokenRow>();
 
+    public DbSet<WorkflowRunRow> WorkflowRuns => Set<WorkflowRunRow>();
+
+    public DbSet<WorkflowStepRow> WorkflowSteps => Set<WorkflowStepRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskRow>(entity =>
@@ -96,6 +100,28 @@ public sealed class AgentDbContext(DbContextOptions<AgentDbContext> options) : D
             entity.Property(token => token.Scopes).IsRequired().HasMaxLength(64);
             entity.Property(token => token.CreatedAt).HasConversion(UtcTicks);
             entity.HasIndex(token => token.TokenHash).IsUnique();
+        });
+
+        modelBuilder.Entity<WorkflowRunRow>(entity =>
+        {
+            entity.ToTable("workflow_runs");
+            entity.HasKey(run => run.RunId);
+            entity.Property(run => run.RunId).HasMaxLength(64);
+            entity.Property(run => run.PlanJson).IsRequired();
+            entity.Property(run => run.Status).IsRequired().HasMaxLength(32);
+            entity.Property(run => run.TraceId).HasMaxLength(64);
+            entity.Property(run => run.FailedStep).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<WorkflowStepRow>(entity =>
+        {
+            entity.ToTable("workflow_steps");
+            entity.HasKey(step => new { step.RunId, step.StepId });
+            entity.Property(step => step.RunId).HasMaxLength(64);
+            entity.Property(step => step.StepId).HasMaxLength(64);
+            entity.Property(step => step.Status).IsRequired().HasMaxLength(32);
+            entity.Property(step => step.Output).IsRequired().HasMaxLength(16384);
+            entity.Property(step => step.IdempotencyKey).HasMaxLength(128);
         });
     }
 }

@@ -2,11 +2,15 @@ using Agent.Api.Auditing;
 using Agent.Api.Auth;
 using Agent.Api.Endpoints;
 using Agent.Api.Workers;
+using Agent.Core.Approvals;
 using Agent.Core.Sandbox;
 using Agent.Core.Shell;
 using Agent.Core.Tasks;
+using Agent.Core.ToolForge;
+using Agent.Core.Workflows;
 using Agent.Infrastructure;
 using Agent.Infrastructure.Llm;
+using Agent.Infrastructure.Mcp;
 using Agent.Infrastructure.Persistence;
 using Agent.Sandbox;
 using Microsoft.AspNetCore.Authentication;
@@ -27,12 +31,14 @@ var database = new DatabaseOptions
 var workspaceRoot = builder.Configuration["Agent:WorkspaceRoot"] ?? "workspace";
 var providerOptions = builder.Configuration.GetSection("Agent:Providers").Get<List<ProviderOptions>>() ?? [];
 var profileOptions = builder.Configuration.GetSection("Agent:ModelProfiles").Get<List<ModelProfileOptions>>() ?? [];
-builder.Services.AddAgentInfrastructure(database, workspaceRoot, providerOptions, profileOptions);
+var toolsRoot = builder.Configuration["Agent:Tools:Root"] ?? "tools";
+builder.Services.AddAgentInfrastructure(database, workspaceRoot, providerOptions, profileOptions, toolsRoot);
 
 // Shell commands run in the Docker sandbox, never on the host. Images are configured and allowlisted.
 var bashImage = builder.Configuration["Agent:Sandbox:BashImage"] ?? "alpine:3.20";
 var powerShellImage = builder.Configuration["Agent:Sandbox:PowerShellImage"];
-var allowedImages = new HashSet<string>(StringComparer.Ordinal) { bashImage };
+var toolTestImage = builder.Configuration["Agent:Sandbox:ToolTestImage"] ?? "mcr.microsoft.com/dotnet/sdk:10.0-alpine";
+var allowedImages = new HashSet<string>(StringComparer.Ordinal) { bashImage, toolTestImage };
 if (!string.IsNullOrWhiteSpace(powerShellImage))
 {
     allowedImages.Add(powerShellImage);
@@ -43,6 +49,22 @@ builder.Services.AddSingleton<IShellRunner>(provider => new SandboxShellRunner(
     Path.GetFullPath(workspaceRoot),
     bashImage,
     powerShellImage));
+// Tools for plans: the configured MCP servers, plus the sandboxed test runner for generated tools.
+// Only tools declared in configuration are offered to the planner (FR-9.13).
+var mcpServers = builder.Configuration.GetSection("Agent:McpServers").Get<List<McpServerOptions>>() ?? [];
+var mcpGateway = await McpToolGateway.ConnectAsync(mcpServers, CancellationToken.None);
+builder.Services.AddSingleton(mcpGateway);
+builder.Services.AddSingleton<IToolCatalog>(mcpGateway);
+builder.Services.AddSingleton<IToolInvoker>(mcpGateway);
+builder.Services.AddSingleton<IToolTestRunner>(provider => new SandboxToolTestRunner(
+    provider.GetRequiredService<ISandboxRunner>(),
+    toolTestImage,
+    Path.Combine(Directory.GetCurrentDirectory(), "tools", "staging")));
+builder.Services.AddSingleton<WorkflowRunner>();
+builder.Services.AddSingleton<WorkflowService>();
+builder.Services.AddSingleton<ToolForgeService>();
+builder.Services.AddSingleton<ApprovalDecisionRouter>();
+
 builder.Services.AddAgentHeadless(
     builder.Configuration["Agent:Notifications:NtfyBaseUrl"],
     builder.Configuration["Agent:Notifications:NtfyTopic"]);
@@ -104,6 +126,8 @@ app.MapGet("/health/ready", async (TaskService service, CancellationToken cancel
 app.MapTaskEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapApprovalEndpoints();
+app.MapWorkflowEndpoints();
+app.MapToolEndpoints();
 app.MapAuditEndpoints();
 app.MapScheduleEndpoints();
 app.MapTokenEndpoints();

@@ -5,10 +5,13 @@ using Agent.Core.Llm;
 using Agent.Core.Ports;
 using Agent.Core.Security;
 using Agent.Core.Tasks;
+using Agent.Core.ToolForge;
+using Agent.Core.Workflows;
 using Agent.Core.Workspace;
 using Agent.Infrastructure.Llm;
 using Agent.Infrastructure.Persistence;
 using Agent.Infrastructure.Queue;
+using Agent.Infrastructure.ToolForge;
 using Agent.Infrastructure.Workspace;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +31,8 @@ public static class ServiceCollectionExtensions
         DatabaseOptions database,
         string workspaceRoot,
         IReadOnlyList<ProviderOptions> providerOptions,
-        IReadOnlyList<ModelProfileOptions> profileOptions)
+        IReadOnlyList<ModelProfileOptions> profileOptions,
+        string toolsRoot = "tools")
     {
         services.AddDbContextFactory<AgentDbContext>(options =>
         {
@@ -62,6 +66,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IApiTokenStore, EfApiTokenStore>();
         services.AddSingleton<IApprovalStore, EfApprovalStore>();
         services.AddSingleton<GovernedCommandService>();
+
+        services.AddSingleton<IWorkflowStore, EfWorkflowStore>();
+        services.AddSingleton<IToolCompiler, RoslynToolCompiler>();
+        services.AddSingleton<IToolRepository>(_ => new FileToolRepository(Path.GetFullPath(toolsRoot)));
+        services.AddSingleton<IToolHistory>(_ => new GitToolHistory(Directory.GetCurrentDirectory()));
+        services.AddSingleton<IToolGenerator, LlmToolGenerator>();
 
         return services;
     }
