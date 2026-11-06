@@ -31,4 +31,7 @@ internal sealed class InMemoryTaskStore : ITaskStore
             .ToList());
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+
+    public Task<IReadOnlyList<AgentTask>> ListByStatusAsync(AgentTaskStatus status, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<AgentTask>>(tasks.Values.Where(task => task.Status == status).Take(limit).ToList());
 }

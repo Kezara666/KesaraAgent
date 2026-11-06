@@ -3,14 +3,32 @@ using Agent.Core.Tasks;
 namespace Agent.Api.Workers;
 
 /// <summary>
-/// Pulls queued task IDs and runs them. Runs inside the API process for feat/core-api;
-/// moves to Agent.Worker when infra/queue is added.
+/// Pulls task IDs and runs them. On start it recovers queued and interrupted work from the database,
+/// so a restart never loses a task (see <see cref="TaskRecovery"/>).
 /// </summary>
-public sealed partial class TaskWorker(ITaskDispatcher queue, TaskProcessor processor, ILogger<TaskWorker> logger)
+public sealed partial class TaskWorker(
+    ITaskDispatcher queue,
+    ITaskStore store,
+    TaskProcessor processor,
+    TimeProvider clock,
+    ILogger<TaskWorker> logger)
     : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        try
+        {
+            var recovered = await TaskRecovery.RecoverAsync(store, queue, clock, stoppingToken).ConfigureAwait(false);
+            if (recovered > 0)
+            {
+                LogRecovered(logger, recovered);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             Guid taskId;
@@ -37,6 +55,9 @@ public sealed partial class TaskWorker(ITaskDispatcher queue, TaskProcessor proc
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Recovered {Count} queued task(s) after restart.")]
+    private static partial void LogRecovered(ILogger logger, int count);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Task {TaskId} could not be processed.")]
     private static partial void LogProcessingFailure(ILogger logger, Exception exception, Guid taskId);
