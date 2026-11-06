@@ -29,6 +29,16 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # Image pulls during a test run are the flaky part of the Docker suites, so the test images are pulled first, with retries.
+      - name: Pull test images (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          for attempt in 1 2 3; do
+            if docker pull postgres:16-alpine && docker pull alpine:3.20; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+
       - name: Test (Linux, with Docker)
         if: runner.os == 'Linux'
         run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=results.trx"
