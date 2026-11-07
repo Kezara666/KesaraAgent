@@ -27,7 +27,7 @@ public sealed class TaskProcessor(ITaskStore store, AgentLoop agent, TimeProvide
         try
         {
             var history = await BuildHistoryAsync(task, cancellationToken).ConfigureAwait(false);
-            var run = await agent.RunAsync(task.Prompt, "task", task.Id.ToString("N"), traceId: null, cancellationToken, history)
+            var run = await agent.RunAsync(task.Prompt, "task", task.Id.ToString("N"), traceId: null, cancellationToken, history, task.ConversationId)
                 .ConfigureAwait(false);
             var text = run.PendingApprovals.Count == 0
                 ? run.Text
