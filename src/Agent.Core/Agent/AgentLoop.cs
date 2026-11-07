@@ -35,7 +35,8 @@ public sealed class AgentLoop(
 
     private const string SystemPrompt =
         "You are a careful assistant with tools. Use a tool when it helps. Read or search files before you describe them. "
-        + "Do not invent file contents. A change to a file is only proposed, and it runs after a person approves it. Say so when that applies.";
+        + "Before you say a file does not exist, call workspace_list. To run a script, use workspace_run on a file that is in the workspace. "
+        + "Do not invent file contents. A change to a file, a new file, or a script run is only proposed, and it runs after a person approves it. Say so when that applies.";
 
     public async Task<AgentRunResult> RunAsync(
         string prompt,
