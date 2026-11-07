@@ -62,7 +62,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "process_runtime_dotnet_gc_heap_size_bytes",
+          "expr": "dotnet_gc_last_collection_heap_size_bytes",
           "legendFormat": "heap"
         }
       ],
