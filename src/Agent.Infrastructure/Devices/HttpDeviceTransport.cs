@@ -1,11 +1,13 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Agent.Core.Devices;
 
 namespace Agent.Infrastructure.Devices;
 
 /// <summary>
-/// Sends an action to a device as an HTTP POST to <c>{endpoint}/{action}</c>, with the parameters as JSON. The
-/// request has a short timeout. Errors name the status code only, never the device's response body.
+/// Sends an action to a device as an HTTP POST to <c>{endpoint}/{action}</c>, with the parameters as JSON and the device
+/// credential as a bearer token. The request has a short timeout. Errors name the status code only, never the device's
+/// response body or the credential.
 /// </summary>
 public sealed class HttpDeviceTransport(HttpClient http) : IDeviceTransport
 {
@@ -13,12 +15,14 @@ public sealed class HttpDeviceTransport(HttpClient http) : IDeviceTransport
         DeviceManifest device,
         DeviceCapability capability,
         IReadOnlyDictionary<string, string> parameters,
+        string credential,
         CancellationToken cancellationToken)
     {
         var body = new Dictionary<string, string>(parameters, StringComparer.Ordinal);
         var url = $"{device.Endpoint.TrimEnd('/')}/{Uri.EscapeDataString(capability.Action)}";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body) };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential);
         try
         {
             using var response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);

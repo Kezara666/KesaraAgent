@@ -119,11 +119,44 @@ public sealed class DeviceCommandServiceTests
         Assert.Empty(DeviceRegistry.Validate(Lamp));
     }
 
+    [Fact]
+    public async Task FR61TheDeviceCredentialIsSentWithTheCommand()
+    {
+        var transport = new RecordingTransport("on");
+        var service = Build(transport, new InMemoryApprovalStore());
+
+        await service.RequestAsync("hall-lamp", "read_state", new Dictionary<string, string>(), "alice", null, CancellationToken.None);
+
+        Assert.Equal(Credential, transport.LastCredential);
+    }
+
+    [Fact]
+    public async Task FR61DeviceWithoutACredentialIsNeverContacted()
+    {
+        var transport = new RecordingTransport("on");
+        var store = new InMemoryDeviceStore();
+        await store.AddAsync(Lamp, protectedSecret: null!, CancellationToken.None);
+        var service = new DeviceCommandService(store, transport, new PrefixVault(), new InMemoryApprovalStore(), new InMemoryAuditLog(), new FakeClock(Start));
+
+        await Assert.ThrowsAsync<DeviceTransportException>(() =>
+            service.RequestAsync("hall-lamp", "read_state", new Dictionary<string, string>(), "alice", null, CancellationToken.None));
+        Assert.Equal(0, transport.Calls);
+    }
+
     private static DeviceCommandService Build(IDeviceTransport transport, InMemoryApprovalStore approvals)
     {
         var store = new InMemoryDeviceStore();
-        store.AddAsync(Lamp, CancellationToken.None).GetAwaiter().GetResult();
-        return new DeviceCommandService(store, transport, approvals, new InMemoryAuditLog(), new FakeClock(Start));
+        store.AddAsync(Lamp, "protected:" + Credential, CancellationToken.None).GetAwaiter().GetResult();
+        return new DeviceCommandService(store, transport, new PrefixVault(), approvals, new InMemoryAuditLog(), new FakeClock(Start));
+    }
+
+    private const string Credential = "lamp-credential";
+
+    private sealed class PrefixVault : IDeviceVault
+    {
+        public string Protect(string plaintext) => "protected:" + plaintext;
+
+        public string Unprotect(string protectedText) => protectedText["protected:".Length..];
     }
 
     private sealed class RecordingTransport(string answer = "ok", string? failWith = null) : IDeviceTransport
@@ -132,10 +165,18 @@ public sealed class DeviceCommandServiceTests
 
         public IReadOnlyDictionary<string, string> LastParameters { get; private set; } = new Dictionary<string, string>();
 
-        public Task<string> SendAsync(DeviceManifest device, DeviceCapability capability, IReadOnlyDictionary<string, string> parameters, CancellationToken cancellationToken)
+        public string? LastCredential { get; private set; }
+
+        public Task<string> SendAsync(
+            DeviceManifest device,
+            DeviceCapability capability,
+            IReadOnlyDictionary<string, string> parameters,
+            string credential,
+            CancellationToken cancellationToken)
         {
             Calls++;
             LastParameters = parameters;
+            LastCredential = credential;
             if (failWith is not null)
             {
                 throw new DeviceTransportException(failWith);
@@ -149,8 +190,21 @@ public sealed class DeviceCommandServiceTests
     {
         private readonly Dictionary<string, DeviceManifest> devices = new(StringComparer.Ordinal);
 
-        public Task<bool> AddAsync(DeviceManifest device, CancellationToken cancellationToken) =>
-            Task.FromResult(devices.TryAdd(device.Id, device));
+        private readonly Dictionary<string, string> secrets = new(StringComparer.Ordinal);
+
+        public Task<bool> AddAsync(DeviceManifest device, string protectedSecret, CancellationToken cancellationToken)
+        {
+            var added = devices.TryAdd(device.Id, device);
+            if (added)
+            {
+                secrets[device.Id] = protectedSecret;
+            }
+
+            return Task.FromResult(added);
+        }
+
+        public Task<string?> GetProtectedSecretAsync(string id, CancellationToken cancellationToken) =>
+            Task.FromResult(secrets.TryGetValue(id, out var secret) ? secret : null);
 
         public Task<DeviceManifest?> GetAsync(string id, CancellationToken cancellationToken) =>
             Task.FromResult(devices.TryGetValue(id, out var device) ? device : null);

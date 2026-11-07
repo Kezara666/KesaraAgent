@@ -92,6 +92,21 @@ public sealed class DeviceApiTests(ApiFactory factory) : IClassFixture<ApiFactor
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task FR61RegistrationReturnsTheCredentialOnceAndReadsNeverShowIt()
+    {
+        using var client = AuthorizedClient();
+        var id = $"cred-{Guid.NewGuid():N}"[..20];
+
+        var register = await client.PostAsJsonAsync("/api/v1/devices", Manifest(id));
+        var registered = await register.Content.ReadFromJsonAsync<JsonElement>();
+        var fetched = await client.GetFromJsonAsync<JsonElement>($"/api/v1/devices/{id}");
+
+        Assert.False(string.IsNullOrWhiteSpace(registered.GetProperty("credential").GetString()));
+        Assert.False(fetched.TryGetProperty("credential", out _));
+        Assert.False(fetched.TryGetProperty("protectedSecret", out _));
+    }
+
     private static object Manifest(string id) => new
     {
         id,

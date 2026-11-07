@@ -168,6 +168,9 @@ namespace Agent.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("ProtectedSecret")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.ToTable("devices", (string)null);

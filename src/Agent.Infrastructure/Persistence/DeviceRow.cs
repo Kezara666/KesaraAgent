@@ -10,4 +10,7 @@ public sealed class DeviceRow
     public string Endpoint { get; set; } = string.Empty;
 
     public string CapabilitiesJson { get; set; } = string.Empty;
+
+    /// <summary>The device credential, protected at rest. Never returned by the API.</summary>
+    public string? ProtectedSecret { get; set; }
 }

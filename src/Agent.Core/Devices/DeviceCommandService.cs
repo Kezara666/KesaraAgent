@@ -12,6 +12,7 @@ namespace Agent.Core.Devices;
 public sealed class DeviceCommandService(
     IDeviceStore store,
     IDeviceTransport transport,
+    IDeviceVault vault,
     IApprovalStore approvals,
     IAuditLog audit,
     TimeProvider clock)
@@ -123,7 +124,12 @@ public sealed class DeviceCommandService(
         IReadOnlyDictionary<string, string> parameters,
         CancellationToken cancellationToken)
     {
-        var answer = await transport.SendAsync(device, capability, parameters, cancellationToken).ConfigureAwait(false);
+        // A device without a credential is never contacted. Such a device must be registered again.
+        var protectedSecret = await store.GetProtectedSecretAsync(device.Id, cancellationToken).ConfigureAwait(false)
+            ?? throw new DeviceTransportException("The device has no credential. Register it again.");
+        var credential = vault.Unprotect(protectedSecret);
+
+        var answer = await transport.SendAsync(device, capability, parameters, credential, cancellationToken).ConfigureAwait(false);
         return answer.Length <= MaxResultCharacters ? answer : answer[..MaxResultCharacters];
     }
 

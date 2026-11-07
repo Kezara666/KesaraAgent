@@ -33,7 +33,11 @@ public static class DeviceEndpoints
         return app;
     }
 
-    private static async Task<IResult> RegisterAsync(RegisterDeviceRequest request, IDeviceStore store, CancellationToken cancellationToken)
+    private static async Task<IResult> RegisterAsync(
+        RegisterDeviceRequest request,
+        IDeviceStore store,
+        IDeviceVault vault,
+        CancellationToken cancellationToken)
     {
         if (request.Capabilities is null)
         {
@@ -61,12 +65,16 @@ public static class DeviceEndpoints
             return Results.Problem(title: "The device was refused.", detail: string.Join(' ', problems), statusCode: StatusCodes.Status400BadRequest);
         }
 
-        if (!await store.AddAsync(device, cancellationToken).ConfigureAwait(false))
+        // The credential is shown once, here. Only its protected form is stored, and it is never returned again.
+        var credential = DeviceRegistry.NewCredential();
+        if (!await store.AddAsync(device, vault.Protect(credential), cancellationToken).ConfigureAwait(false))
         {
             return Results.Problem(title: "A device with that id already exists.", statusCode: StatusCodes.Status409Conflict);
         }
 
-        return Results.Created($"/api/v1/devices/{device.Id}", DeviceResponse.From(device));
+        return Results.Created(
+            $"/api/v1/devices/{device.Id}",
+            new DeviceRegistrationResponse(DeviceResponse.From(device), credential));
     }
 
     private static async Task<IResult> ListAsync(IDeviceStore store, CancellationToken cancellationToken)
@@ -147,5 +155,8 @@ public sealed record DeviceResponse(string Id, string Name, string Endpoint, IRe
 }
 
 public sealed record CapabilityResponse(string Name, string Tier);
+
+/// <summary>Returned once at registration. The credential is the device's bearer token and is not shown again.</summary>
+public sealed record DeviceRegistrationResponse(DeviceResponse Device, string Credential);
 
 public sealed record DeviceCommandResponse(string Status, string? Answer, Guid? ApprovalId);
