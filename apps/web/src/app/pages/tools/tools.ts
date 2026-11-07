@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { AgentApi, ToolView, describeError } from '../../core/api';
+import { AgentApi, GeneratedToolView, ToolView, describeError } from '../../core/api';
 
 @Component({
   selector: 'app-tools',
@@ -27,16 +27,38 @@ import { AgentApi, ToolView, describeError } from '../../core/api';
         }
       </ul>
     </section>
+
+    <section class="panel">
+      <h2>Generated</h2>
+      <p class="muted">Tools the agent generated and a person promoted. They are recorded for review. The agent does not run them.</p>
+      @if (generated().length === 0) {
+        <p class="muted">No generated tools yet.</p>
+      }
+      <ul class="list">
+        @for (tool of generated(); track tool.name) {
+          <li>
+            <strong>{{ tool.name }}</strong>
+            <span class="badge">{{ tool.domain }}</span>
+            <div class="muted">{{ tool.purpose }}</div>
+          </li>
+        }
+      </ul>
+    </section>
   `,
 })
 export class ToolsComponent implements OnInit {
   private readonly api = inject(AgentApi);
 
   readonly tools = signal<ToolView[]>([]);
+  readonly generated = signal<GeneratedToolView[]>([]);
   readonly loaded = signal(false);
   readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
+    this.api.listGeneratedTools().subscribe({
+      next: (items) => this.generated.set(items),
+      error: (err) => this.error.set(describeError(err)),
+    });
     this.api.listTools().subscribe({
       next: (items) => {
         this.tools.set(items);

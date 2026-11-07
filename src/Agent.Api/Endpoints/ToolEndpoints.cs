@@ -1,6 +1,7 @@
 using Agent.Api.Auth;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
+using Agent.Infrastructure.ToolForge;
 
 namespace Agent.Api.Endpoints;
 
@@ -15,6 +16,11 @@ public static class ToolEndpoints
             .WithName("ForgeTool")
             .WithSummary("Generate, compile, test, and promote a tool. Read-only tools promote automatically; others wait for approval.");
 
+        group.MapGet("/generated", ListGeneratedAsync)
+            .RequireAuthorization(ApiPolicies.Read)
+            .WithName("ListGeneratedTools")
+            .WithSummary("Tools that were generated and promoted. They are recorded for review and are not run by the agent.");
+
         group.MapGet("/", ListAsync)
             .RequireAuthorization(ApiPolicies.Read)
             .WithName("ListTools")
@@ -22,6 +28,9 @@ public static class ToolEndpoints
 
         return app;
     }
+
+    private static async Task<IResult> ListGeneratedAsync(PromotedToolIndex index, CancellationToken cancellationToken) =>
+        Results.Ok(await index.ListAsync(100, cancellationToken).ConfigureAwait(false));
 
     private static IResult ListAsync(IToolListing listing) =>
         Results.Ok(listing.List()

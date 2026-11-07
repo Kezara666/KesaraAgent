@@ -53,6 +53,14 @@ export interface ToolView {
   requiredInputs: string[];
 }
 
+export interface GeneratedToolView {
+  name: string;
+  domain: string;
+  sideEffect: string;
+  purpose: string;
+  promotedAt: string;
+}
+
 /** Typed client for the agent API. Calls use a relative base path, and the interceptor adds the token. */
 @Injectable({ providedIn: 'root' })
 export class AgentApi {
@@ -105,6 +113,10 @@ export class AgentApi {
 
   listTools(): Observable<ToolView[]> {
     return this.http.get<ToolView[]>(`${this.base}/tools`);
+  }
+
+  listGeneratedTools(): Observable<GeneratedToolView[]> {
+    return this.http.get<GeneratedToolView[]>(`${this.base}/tools/generated`);
   }
 }
 

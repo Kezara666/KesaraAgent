@@ -75,6 +75,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IToolCompiler, RoslynToolCompiler>();
         services.AddSingleton<IToolRepository>(_ => new FileToolRepository(Path.GetFullPath(toolsRoot)));
         services.AddSingleton<IToolHistory>(_ => new GitToolHistory(Directory.GetCurrentDirectory()));
+        services.AddSingleton(_ => new PromotedToolIndex(toolsRoot));
         services.AddSingleton<IToolGenerator, LlmToolGenerator>();
 
         return services;
