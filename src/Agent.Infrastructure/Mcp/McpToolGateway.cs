@@ -91,10 +91,12 @@ public sealed class McpToolGateway : IToolProvider, IAsyncDisposable
                     continue;
                 }
 
+                var remoteDescription = remote.FirstOrDefault(tool => tool.Name == declared.Name)?.Description;
                 var descriptor = new ToolDescriptor(
                     $"{server.Name}_{declared.Name}",
                     Enum.Parse<SideEffect>(declared.SideEffect, ignoreCase: true),
-                    declared.RequiredInputs);
+                    declared.RequiredInputs,
+                    declared.Description ?? remoteDescription ?? string.Empty);
 
                 tools[descriptor.Name] = new Registration(descriptor, client, declared.Name);
             }

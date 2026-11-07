@@ -32,6 +32,13 @@ internal sealed class InMemoryTaskStore : ITaskStore
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
 
+    public Task<IReadOnlyList<AgentTask>> ListConversationAsync(Guid conversationId, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<AgentTask>>(tasks.Values
+            .Where(task => task.ConversationId == conversationId)
+            .OrderBy(task => task.CreatedAt)
+            .Take(limit)
+            .ToList());
+
     public Task<IReadOnlyList<AgentTask>> ListByStatusAsync(AgentTaskStatus status, int limit, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<AgentTask>>(tasks.Values.Where(task => task.Status == status).Take(limit).ToList());
 }
