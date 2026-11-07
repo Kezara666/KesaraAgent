@@ -1,16 +1,25 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { interval, switchMap, startWith } from 'rxjs';
 import { renderMarkdown } from '../../core/markdown';
-import { AgentApi, TaskStatus, TaskView, describeError } from '../../core/api';
+import { AgentApi, ApprovalView, TaskStatus, TaskView, describeError } from '../../core/api';
 import { createRecognizer, detectSpeech, speak, SpeechRecognitionLike } from '../../core/speech';
 
 const TERMINAL: TaskStatus[] = ['Done', 'Failed', 'Cancelled'];
 
 // The current chat survives a page reload in this browser tab. Storage can be blocked, so it is optional.
 const CONVERSATION_KEY = 'agent.conversation';
+
+// Approval ids appear in the agent's replies as "Waiting for approval: <id>".
+const APPROVAL_ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+
+const TARGET_LABELS: Record<string, string> = {
+  workspace_edit: 'Edit a file',
+  workspace_create: 'Create a file',
+  workspace_run: 'Run a script',
+};
 
 function loadConversationId(): string {
   try {
@@ -39,13 +48,13 @@ function saveConversationId(id: string): void {
   imports: [FormsModule, DatePipe],
   template: `
     <section class="panel">
-      <h1>Tasks</h1>
+      <h1>Chat</h1>
       <form (ngSubmit)="submit()">
         <label for="prompt">What should the agent do?</label>
         <textarea id="prompt" name="prompt" rows="3" maxlength="4000" [(ngModel)]="prompt"></textarea>
         <p class="muted">Chat {{ conversationId().slice(0, 8) }}: earlier messages in this chat are sent as context.</p>
         <div class="row">
-          <button type="submit" [disabled]="busy() || prompt.trim().length === 0">Submit</button>
+          <button type="submit" [disabled]="busy() || prompt.trim().length === 0">Send</button>
           <button type="button" class="secondary" (click)="newChat()">New chat</button>
           @if (canListen) {
             <button type="button" class="secondary" (click)="listen()" [disabled]="listening()">
@@ -60,22 +69,37 @@ function saveConversationId(id: string): void {
     </section>
 
     <section class="panel">
-      <h2>Recent</h2>
-      @if (tasks().length === 0) {
-        <p class="muted">No tasks yet.</p>
+      <h2>This chat</h2>
+      @if (chat().length === 0) {
+        <p class="muted">No messages yet. Send one above.</p>
       }
       <ul class="list">
-        @for (task of tasks(); track task.id) {
+        @for (task of chat(); track task.id) {
           <li>
-            <div class="row between">
-              <strong>{{ task.status }}</strong>
-              <span class="muted">{{ task.createdAt | date: 'short' }}</span>
-            </div>
-            <p>{{ task.prompt }}</p>
+            <p><strong>You:</strong> {{ task.prompt }}</p>
             @if (task.result) {
               <div class="result" [innerHTML]="render(task.result)"></div>
               @if (canSpeak) {
                 <button type="button" class="secondary" (click)="read(task.result)">Read aloud</button>
+              }
+            }
+            @for (id of approvalIdsOf(task.result); track id) {
+              @if (approvals().get(id); as approval) {
+                <div class="approval-card">
+                  <div class="row between">
+                    <strong>Approval needed: {{ label(approval.target) }}</strong>
+                    <span class="badge">{{ approval.status }}</span>
+                  </div>
+                  @if (approval.status === 'Pending') {
+                    <p class="muted">Nothing runs until you approve. Expires {{ approval.expiresAt | date: 'short' }}.</p>
+                    <div class="row">
+                      <button type="button" (click)="decide(approval.id, true)" [disabled]="busy()">Approve</button>
+                      <button type="button" class="secondary" (click)="decide(approval.id, false)" [disabled]="busy()">Reject</button>
+                    </div>
+                  } @else {
+                    <p class="muted">{{ approval.resultSummary ?? approval.status }}</p>
+                  }
+                </div>
               }
             }
             @if (task.error) {
@@ -100,6 +124,14 @@ export class TasksComponent implements OnInit {
   readonly busy = signal(false);
   readonly listening = signal(false);
   readonly error = signal<string | null>(null);
+  readonly approvals = signal<Map<string, ApprovalView>>(new Map());
+
+  // Only the messages of the current chat, oldest first.
+  readonly chat = computed(() =>
+    this.tasks()
+      .filter((task) => task.conversationId === this.conversationId())
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+  );
 
   get canListen(): boolean {
     return this.support.recognition;
@@ -115,11 +147,11 @@ export class TasksComponent implements OnInit {
     interval(2000)
       .pipe(
         startWith(0),
-        switchMap(() => this.api.listTasks(20)),
+        switchMap(() => this.api.listTasks(50)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (tasks) => this.tasks.set(tasks),
+        next: (tasks) => this.applyTasks(tasks),
         error: (err) => this.error.set(describeError(err)),
       });
   }
@@ -151,6 +183,34 @@ export class TasksComponent implements OnInit {
     this.error.set(null);
   }
 
+  decide(id: string, approve: boolean): void {
+    this.busy.set(true);
+    this.error.set(null);
+    const request = approve ? this.api.approve(id) : this.api.reject(id);
+    request.subscribe({
+      next: (view) => {
+        this.busy.set(false);
+        this.approvals.update((map) => new Map(map).set(id, view));
+        this.refresh();
+      },
+      error: (err) => {
+        this.busy.set(false);
+        this.error.set(describeError(err));
+      },
+    });
+  }
+
+  approvalIdsOf(text: string | null): string[] {
+    if (!text || !text.includes('pproval')) {
+      return [];
+    }
+    return [...new Set(text.match(APPROVAL_ID) ?? [])];
+  }
+
+  label(target: string): string {
+    return TARGET_LABELS[target] ?? target;
+  }
+
   listen(): void {
     this.recognizer = createRecognizer(this.scope);
     if (!this.recognizer) {
@@ -179,9 +239,31 @@ export class TasksComponent implements OnInit {
   }
 
   private refresh(): void {
-    this.api.listTasks(20).subscribe({
-      next: (tasks) => this.tasks.set(tasks),
+    this.api.listTasks(50).subscribe({
+      next: (tasks) => this.applyTasks(tasks),
       error: (err) => this.error.set(describeError(err)),
     });
+  }
+
+  private applyTasks(tasks: TaskView[]): void {
+    this.tasks.set(tasks);
+    this.loadApprovals(tasks);
+  }
+
+  // Fetch each approval that a reply mentions. Pending ones are refreshed so their buttons change when decided.
+  private loadApprovals(tasks: TaskView[]): void {
+    const ids = new Set(tasks.flatMap((task) => this.approvalIdsOf(task.result)));
+    for (const id of ids) {
+      const known = this.approvals().get(id);
+      if (known && known.status !== 'Pending') {
+        continue;
+      }
+      this.api.getApproval(id).subscribe({
+        next: (view) => this.approvals.update((map) => new Map(map).set(id, view)),
+        error: () => {
+          // A missing or unreadable approval shows no card, so the rest of the page still works.
+        },
+      });
+    }
   }
 }
