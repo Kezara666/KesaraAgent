@@ -87,6 +87,10 @@ export class AgentApi {
     return this.http.get<ApprovalView[]>(`${this.base}/approvals`, { params: new HttpParams().set('status', status) });
   }
 
+  getApproval(id: string): Observable<ApprovalView> {
+    return this.http.get<ApprovalView>(`${this.base}/approvals/${id}`);
+  }
+
   approve(id: string): Observable<ApprovalView> {
     return this.http.post<ApprovalView>(`${this.base}/approvals/${id}/approve`, null);
   }
