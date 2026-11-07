@@ -63,6 +63,7 @@ builder.Services.AddSingleton(mcpGateway);
 // The planner, workflows, and the agent loop all see the same tools.
 builder.Services.AddSingleton<IToolProvider>(mcpGateway);
 builder.Services.AddSingleton<IToolProvider, WorkspaceToolProvider>();
+builder.Services.AddSingleton<IToolProvider, WorkspaceRunToolProvider>();
 builder.Services.AddSingleton<ToolRegistry>();
 builder.Services.AddSingleton<IToolCatalog>(provider => provider.GetRequiredService<ToolRegistry>());
 builder.Services.AddSingleton<IToolListing>(provider => provider.GetRequiredService<ToolRegistry>());
