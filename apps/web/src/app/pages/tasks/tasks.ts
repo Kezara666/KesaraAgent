@@ -88,9 +88,13 @@ interface ChatSummary {
 
           @for (task of messages(); track task.id) {
             <div class="turn">
-              <div class="user-row">
-                <div class="user-bubble">{{ task.prompt }}</div>
-              </div>
+              @if (isSystemNote(task.prompt)) {
+                <p class="system-note muted">Approved change applied. The agent is continuing.</p>
+              } @else {
+                <div class="user-row">
+                  <div class="user-bubble">{{ task.prompt }}</div>
+                </div>
+              }
 
               <div class="assistant-row">
                 @if (task.result) {
@@ -162,9 +166,8 @@ interface ChatSummary {
       .chat-shell {
         display: grid;
         grid-template-columns: 260px 1fr;
-        height: calc(100vh - 64px);
-        min-height: 480px;
-        margin: -1rem;
+        height: 100vh;
+        margin: -24px;
         background: var(--bg);
       }
       .sidebar {
@@ -251,6 +254,11 @@ interface ChatSummary {
       .assistant-row {
         margin-top: 0.75rem;
         line-height: 1.6;
+      }
+      .system-note {
+        text-align: center;
+        font-size: 0.85rem;
+        margin: 0.5rem 0;
       }
       .thinking {
         font-style: italic;
@@ -463,8 +471,22 @@ export class TasksComponent implements OnInit {
     this.recognizer.start();
   }
 
+  // The agent posts a follow-up after an approved change. It is a system note, not something the person typed.
+  isSystemNote(prompt: string): boolean {
+    return prompt.startsWith('The change you proposed with the tool');
+  }
+
   render(text: string | null): string {
-    return text ? renderMarkdown(text) : '';
+    if (!text) {
+      return '';
+    }
+    // Approval cards show the waiting state, so the raw "Waiting for approval" lines are left out of the reply.
+    const visible = text
+      .split('\n')
+      .filter((line) => !/waiting for approval|is waiting for a person/i.test(line))
+      .join('\n')
+      .trim();
+    return renderMarkdown(visible);
   }
 
   read(text: string | null): void {

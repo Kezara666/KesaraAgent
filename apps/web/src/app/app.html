@@ -1,17 +1,23 @@
-<header class="topbar">
-  <span class="brand">Kesara Agent</span>
-  @if (auth.isSignedIn()) {
-    <nav aria-label="Main">
-      <a routerLink="/tasks" routerLinkActive="active">Tasks</a>
-      <a routerLink="/approvals" routerLinkActive="active">Approvals</a>
-      <a routerLink="/schedules" routerLinkActive="active">Schedules</a>
-      <a routerLink="/workspace" routerLinkActive="active">Workspace</a>
-      <a routerLink="/tools" routerLinkActive="active">Tools</a>
-      <a routerLink="/audit" routerLinkActive="active">Audit</a>
-      <button type="button" class="secondary" (click)="signOut()">Sign out</button>
-    </nav>
-  }
-</header>
-<main>
-  <router-outlet />
-</main>
+@if (auth.isSignedIn()) {
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">Kesara Agent</div>
+      <nav aria-label="Main">
+        <a routerLink="/tasks" routerLinkActive="active">Chat</a>
+        <a routerLink="/approvals" routerLinkActive="active">Approvals</a>
+        <a routerLink="/schedules" routerLinkActive="active">Schedules</a>
+        <a routerLink="/workspace" routerLinkActive="active">Workspace</a>
+        <a routerLink="/tools" routerLinkActive="active">Tools</a>
+        <a routerLink="/audit" routerLinkActive="active">Audit</a>
+      </nav>
+      <button type="button" class="secondary signout" (click)="signOut()">Sign out</button>
+    </aside>
+    <main>
+      <router-outlet />
+    </main>
+  </div>
+} @else {
+  <main>
+    <router-outlet />
+  </main>
+}
