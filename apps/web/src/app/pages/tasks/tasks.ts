@@ -3,6 +3,7 @@ import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { interval, switchMap, startWith } from 'rxjs';
+import { renderMarkdown } from '../../core/markdown';
 import { AgentApi, TaskStatus, TaskView, describeError } from '../../core/api';
 import { createRecognizer, detectSpeech, speak, SpeechRecognitionLike } from '../../core/speech';
 
@@ -45,7 +46,7 @@ const TERMINAL: TaskStatus[] = ['Done', 'Failed', 'Cancelled'];
             </div>
             <p>{{ task.prompt }}</p>
             @if (task.result) {
-              <pre class="result">{{ task.result }}</pre>
+              <div class="result" [innerHTML]="render(task.result)"></div>
               @if (canSpeak) {
                 <button type="button" class="secondary" (click)="read(task.result)">Read aloud</button>
               }
@@ -130,6 +131,10 @@ export class TasksComponent implements OnInit {
     };
     this.recognizer.onend = () => this.listening.set(false);
     this.recognizer.start();
+  }
+
+  render(text: string | null): string {
+    return text ? renderMarkdown(text) : '';
   }
 
   read(text: string | null): void {
