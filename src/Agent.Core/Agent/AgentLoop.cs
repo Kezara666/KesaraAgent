@@ -4,6 +4,7 @@ using Agent.Core.Audit;
 using Agent.Core.Governance;
 using Agent.Core.Llm;
 using Agent.Core.Ports;
+using Agent.Core.Tasks;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
 
@@ -42,7 +43,8 @@ public sealed class AgentLoop(
         string runId,
         string? traceId,
         CancellationToken cancellationToken,
-        IReadOnlyList<ChatTurn>? history = null)
+        IReadOnlyList<ChatTurn>? history = null,
+        Guid? conversationId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
 
@@ -68,7 +70,7 @@ public sealed class AgentLoop(
             turns.Add(new ChatTurn("assistant", answer.Text, answer.ToolCalls));
             foreach (var call in answer.ToolCalls)
             {
-                var result = await ExecuteAsync(call, actor, runId, traceId, pending, cancellationToken).ConfigureAwait(false);
+                var result = await ExecuteAsync(call, actor, runId, traceId, pending, conversationId, cancellationToken).ConfigureAwait(false);
                 turns.Add(new ChatTurn("tool", result, ToolCallId: call.Id));
             }
         }
@@ -85,6 +87,7 @@ public sealed class AgentLoop(
         string runId,
         string? traceId,
         List<Guid> pending,
+        Guid? conversationId,
         CancellationToken cancellationToken)
     {
         var descriptor = catalog.Find(call.Name);
@@ -109,7 +112,7 @@ public sealed class AgentLoop(
                 Guid.CreateVersion7(),
                 ApprovalKind,
                 call.Name,
-                JsonSerializer.Serialize(new HeldCall(call.Name, call.Arguments)),
+                JsonSerializer.Serialize(new HeldCall(call.Name, call.Arguments, conversationId)),
                 ApprovalStatus.Pending,
                 now,
                 now.Add(ApprovalLifetime),
@@ -140,7 +143,7 @@ public sealed class AgentLoop(
             new AuditEntry(Guid.CreateVersion7(), clock.GetUtcNow(), actor, action, target, Tier: null, result, traceId),
             cancellationToken);
 
-    internal sealed record HeldCall(string Name, IReadOnlyDictionary<string, string> Arguments);
+    internal sealed record HeldCall(string Name, IReadOnlyDictionary<string, string> Arguments, Guid? ConversationId = null);
 }
 
 /// <summary>Decides agent tool calls that were held for approval. An approved call runs once, with the arguments it was held with.</summary>
@@ -148,7 +151,8 @@ public sealed class AgentToolActions(
     IApprovalStore approvals,
     IToolInvoker invoker,
     IAuditLog audit,
-    TimeProvider clock)
+    TimeProvider clock,
+    TaskService? tasks = null)
 {
     private const int MaxSummaryCharacters = 256;
 
@@ -186,15 +190,17 @@ public sealed class AgentToolActions(
             ?? throw new InvalidOperationException("The held tool call could not be read.");
 
         string summary;
+        string output;
         ApprovalStatus status;
         try
         {
-            await invoker.InvokeAsync(held.Name, held.Arguments, $"approval:{approvalId}", cancellationToken).ConfigureAwait(false);
+            output = await invoker.InvokeAsync(held.Name, held.Arguments, $"approval:{approvalId}", cancellationToken).ConfigureAwait(false);
             status = ApprovalStatus.Executed;
             summary = "Executed";
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            output = string.Empty;
             status = ApprovalStatus.Failed;
             summary = "Failed: " + exception.GetType().Name;
         }
@@ -202,10 +208,29 @@ public sealed class AgentToolActions(
         var finished = approved with { Status = status, DecidedAt = now, ResultSummary = Truncate(summary) };
         await approvals.UpdateAsync(finished, cancellationToken).ConfigureAwait(false);
         await AuditAsync(approver, "agent.tool.executed", request.Target, finished.ResultSummary!, cancellationToken).ConfigureAwait(false);
+
+        // The conversation continues with the result, so the person does not have to restate the request.
+        if (held.ConversationId is { } conversationId && tasks is not null)
+        {
+            await tasks.SubmitAsync(
+                    ContinuationPrompt(held.Name, status, output),
+                    "approval-" + approvalId.ToString("N"),
+                    cancellationToken,
+                    conversationId)
+                .ConfigureAwait(false);
+        }
+
         return finished;
     }
 
     private static string Truncate(string text) => text.Length <= MaxSummaryCharacters ? text : text[..MaxSummaryCharacters];
+
+    private static string ContinuationPrompt(string tool, ApprovalStatus status, string output) =>
+        status == ApprovalStatus.Executed
+            ? $"The change you proposed with the tool '{tool}' was approved and applied. Its result: {Shorten(output, 1500)}. Briefly tell the person what was done, and then finish the request."
+            : $"The change you proposed with the tool '{tool}' was approved but failed. Tell the person, and suggest what to do next.";
+
+    private static string Shorten(string text, int limit) => text.Length <= limit ? text : text[..limit] + "...";
 
     private Task AuditAsync(string actor, string action, string target, string result, CancellationToken cancellationToken) =>
         audit.AppendAsync(
