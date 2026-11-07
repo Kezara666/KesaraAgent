@@ -35,3 +35,6 @@ Thumbs.db
 apps/web/e2e-workspace/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# Default agent workspace folder (local files, not project code)
+workspace/

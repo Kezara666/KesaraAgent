@@ -37,6 +37,13 @@ public sealed class WorkspaceService(IWorkspaceFileSystem files, IWorkspaceCheck
         return hits;
     }
 
+    /// <summary>Creates a new file with the given content. An existing file is never overwritten.</summary>
+    public async Task<string> CreateAsync(string relativePath, string content, CancellationToken cancellationToken)
+    {
+        await files.CreateTextAsync(relativePath, content, cancellationToken).ConfigureAwait(false);
+        return relativePath;
+    }
+
     /// <summary>Applies one search-and-replace edit and returns the diff of what changed.</summary>
     public async Task<EditResult> EditAsync(string relativePath, string search, string replace, CancellationToken cancellationToken)
     {
