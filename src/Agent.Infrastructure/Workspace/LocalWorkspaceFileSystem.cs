@@ -19,6 +19,7 @@ public sealed class LocalWorkspaceFileSystem : IWorkspaceFileSystem
     {
         ".cs", ".csproj", ".props", ".targets", ".slnx", ".sln", ".json", ".md", ".txt",
         ".yml", ".yaml", ".xml", ".ps1", ".sh", ".config", ".editorconfig", ".gitignore",
+        ".js", ".mjs", ".ts", ".py", ".html", ".css", ".csv", ".toml", ".ini", ".log",
     };
 
     private readonly string root;
