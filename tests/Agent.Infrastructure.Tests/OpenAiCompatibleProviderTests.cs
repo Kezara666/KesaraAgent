@@ -71,6 +71,21 @@ public sealed class OpenAiCompatibleProviderTests
         Assert.Equal(0, handler.Calls);
     }
 
+    [Fact]
+    public async Task FR41RequestUsesTheLowercaseFieldNamesOpenAiEndpointsExpect()
+    {
+        const string reply = """{"choices":[{"message":{"content":"ok"}}]}""";
+        var handler = new StubHandler(HttpStatusCode.OK, reply);
+        var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/v1/") };
+        var provider = new OpenAiCompatibleProvider("p", http, KeyVariable);
+
+        await provider.CompleteAsync("the-model", "hi", CancellationToken.None);
+
+        Assert.NotNull(handler.LastRequestBody);
+        Assert.Contains("\"model\":\"the-model\"", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
     private static async Task<ProviderReply> CallAsync(HttpStatusCode status, string body)
     {
         var handler = new StubHandler(status, body);
@@ -84,13 +99,17 @@ public sealed class OpenAiCompatibleProviderTests
     {
         public int Calls { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public string? LastRequestBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            LastRequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             Calls++;
-            return Task.FromResult(new HttpResponseMessage(status)
+            return new HttpResponseMessage(status)
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json"),
-            });
+            };
         }
+
     }
 }
