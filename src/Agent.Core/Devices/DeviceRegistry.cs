@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace Agent.Core.Devices;
@@ -6,6 +7,10 @@ namespace Agent.Core.Devices;
 public static partial class DeviceRegistry
 {
     public const int MaxCapabilities = 32;
+
+    /// <summary>A new device credential: 32 random bytes, URL-safe base64. Shown once at registration, then only kept protected.</summary>
+    public static string NewCredential() =>
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     [GeneratedRegex("^[a-z][a-z0-9-]{2,40}$", RegexOptions.CultureInvariant)]
     private static partial Regex IdPattern();

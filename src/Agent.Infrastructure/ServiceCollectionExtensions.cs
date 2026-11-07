@@ -9,6 +9,7 @@ using Agent.Core.Tasks;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
 using Agent.Core.Workspace;
+using Agent.Infrastructure.Devices;
 using Agent.Infrastructure.Llm;
 using Agent.Infrastructure.Persistence;
 using Agent.Infrastructure.Queue;
@@ -72,6 +73,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IWorkflowStore, EfWorkflowStore>();
         services.AddSingleton<IDeviceStore, EfDeviceStore>();
+        services.AddSingleton<IDeviceVault, DataProtectionDeviceVault>();
         services.AddSingleton<IToolCompiler, RoslynToolCompiler>();
         services.AddSingleton<IToolRepository>(_ => new FileToolRepository(Path.GetFullPath(toolsRoot)));
         services.AddSingleton<IToolHistory>(_ => new GitToolHistory(Directory.GetCurrentDirectory()));
