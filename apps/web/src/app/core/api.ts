@@ -12,6 +12,7 @@ export interface TaskView {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+  conversationId: string | null;
 }
 
 export interface ApprovalView {
@@ -58,8 +59,12 @@ export class AgentApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1';
 
-  submitTask(prompt: string, idempotencyKey: string): Observable<TaskView> {
-    return this.http.post<TaskView>(`${this.base}/tasks`, { prompt }, { headers: { 'Idempotency-Key': idempotencyKey } });
+  submitTask(prompt: string, idempotencyKey: string, conversationId?: string): Observable<TaskView> {
+    return this.http.post<TaskView>(
+      `${this.base}/tasks`,
+      conversationId ? { prompt, conversationId } : { prompt },
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
   }
 
   getTask(id: string): Observable<TaskView> {

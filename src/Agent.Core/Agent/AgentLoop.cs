@@ -36,7 +36,13 @@ public sealed class AgentLoop(
         "You are a careful assistant with tools. Use a tool when it helps. Read or search files before you describe them. "
         + "Do not invent file contents. A change to a file is only proposed, and it runs after a person approves it. Say so when that applies.";
 
-    public async Task<AgentRunResult> RunAsync(string prompt, string actor, string runId, string? traceId, CancellationToken cancellationToken)
+    public async Task<AgentRunResult> RunAsync(
+        string prompt,
+        string actor,
+        string runId,
+        string? traceId,
+        CancellationToken cancellationToken,
+        IReadOnlyList<ChatTurn>? history = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
 
@@ -46,8 +52,9 @@ public sealed class AgentLoop(
         var turns = new List<ChatTurn>
         {
             new("system", SystemPrompt),
-            new("user", prompt),
         };
+        turns.AddRange(history ?? []);
+        turns.Add(new ChatTurn("user", prompt));
         var pending = new List<Guid>();
 
         for (var step = 1; step <= MaxSteps; step++)

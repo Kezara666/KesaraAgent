@@ -49,7 +49,7 @@ public static class TaskEndpoints
 
         try
         {
-            var result = await service.SubmitAsync(request.Prompt ?? string.Empty, idempotencyKey, cancellationToken)
+            var result = await service.SubmitAsync(request.Prompt ?? string.Empty, idempotencyKey, cancellationToken, request.ConversationId)
                 .ConfigureAwait(false);
             var body = TaskResponse.From(result.Task);
 
@@ -95,7 +95,8 @@ public static class TaskEndpoints
 
 /// <summary>Request body for task submission.</summary>
 /// <param name="Prompt">The request to run. Required, up to 4000 characters.</param>
-public sealed record SubmitTaskRequest(string? Prompt);
+/// <param name="ConversationId">Optional. Tasks with the same id share context. Omit for a standalone task.</param>
+public sealed record SubmitTaskRequest(string? Prompt, Guid? ConversationId = null);
 
 /// <summary>Public view of a task. Mirrors the Core record without exposing internal types.</summary>
 public sealed record TaskResponse(
@@ -105,7 +106,8 @@ public sealed record TaskResponse(
     string? Result,
     string? Error,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    Guid? ConversationId = null)
 {
     public static TaskResponse From(AgentTask task) => new(
         task.Id,
@@ -114,5 +116,6 @@ public sealed record TaskResponse(
         task.Result,
         task.Error,
         task.CreatedAt,
-        task.UpdatedAt);
+        task.UpdatedAt,
+        task.ConversationId);
 }

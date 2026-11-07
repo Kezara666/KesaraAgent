@@ -18,4 +18,6 @@ public sealed class TaskRow
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
+
+    public Guid? ConversationId { get; set; }
 }

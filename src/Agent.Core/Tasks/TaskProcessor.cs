@@ -1,4 +1,5 @@
 using Agent.Core.Agent;
+using Agent.Core.Llm;
 
 namespace Agent.Core.Tasks;
 
@@ -8,6 +9,10 @@ namespace Agent.Core.Tasks;
 /// </summary>
 public sealed class TaskProcessor(ITaskStore store, AgentLoop agent, TimeProvider clock)
 {
+    private const int MaxConversationTasks = 100;
+    private const int MaxHistoryTurns = 10;
+    private const int MaxAnswerCharacters = 2000;
+
     public async Task ProcessAsync(Guid taskId, CancellationToken cancellationToken)
     {
         var task = await store.GetAsync(taskId, cancellationToken).ConfigureAwait(false);
@@ -21,7 +26,8 @@ public sealed class TaskProcessor(ITaskStore store, AgentLoop agent, TimeProvide
 
         try
         {
-            var run = await agent.RunAsync(task.Prompt, "task", task.Id.ToString("N"), traceId: null, cancellationToken)
+            var history = await BuildHistoryAsync(task, cancellationToken).ConfigureAwait(false);
+            var run = await agent.RunAsync(task.Prompt, "task", task.Id.ToString("N"), traceId: null, cancellationToken, history)
                 .ConfigureAwait(false);
             var text = run.PendingApprovals.Count == 0
                 ? run.Text
@@ -51,4 +57,33 @@ public sealed class TaskProcessor(ITaskStore store, AgentLoop agent, TimeProvide
             await store.UpdateAsync(failed, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Earlier answers in the same conversation, oldest first. Only completed tasks count, and each answer is shortened so
+    /// the context stays small.
+    /// </summary>
+    private async Task<IReadOnlyList<ChatTurn>> BuildHistoryAsync(AgentTask task, CancellationToken cancellationToken)
+    {
+        if (task.ConversationId is not { } conversationId)
+        {
+            return [];
+        }
+
+        var earlier = await store.ListConversationAsync(conversationId, MaxConversationTasks, cancellationToken).ConfigureAwait(false);
+        var completed = earlier
+            .Where(item => item.Id != task.Id && item.Status == AgentTaskStatus.Done && item.Result is not null)
+            .TakeLast(MaxHistoryTurns)
+            .ToList();
+
+        var turns = new List<ChatTurn>();
+        foreach (var item in completed)
+        {
+            turns.Add(new ChatTurn("user", item.Prompt));
+            turns.Add(new ChatTurn("assistant", Shorten(item.Result!)));
+        }
+
+        return turns;
+    }
+
+    private static string Shorten(string text) => text.Length <= MaxAnswerCharacters ? text : text[..MaxAnswerCharacters] + "\n[shortened]";
 }

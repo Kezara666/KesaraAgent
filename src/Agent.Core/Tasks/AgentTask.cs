@@ -9,6 +9,7 @@ namespace Agent.Core.Tasks;
 /// <param name="Error">Short, non-sensitive failure reason when the task failed.</param>
 /// <param name="CreatedAt">When the task was accepted.</param>
 /// <param name="UpdatedAt">When the task last changed state.</param>
+/// <param name="ConversationId">The conversation this task belongs to. Earlier tasks in it are given to the model as context.</param>
 public sealed record AgentTask(
     Guid Id,
     string Prompt,
@@ -17,4 +18,5 @@ public sealed record AgentTask(
     string? Result,
     string? Error,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    Guid? ConversationId = null);

@@ -9,7 +9,7 @@ public sealed class TaskService(ITaskStore store, ITaskDispatcher queue, TimePro
     /// Accepts a task. If the idempotency key was already used, returns the existing task
     /// and <c>Created</c> is false.
     /// </summary>
-    public async Task<SubmitResult> SubmitAsync(string prompt, string? idempotencyKey, CancellationToken cancellationToken)
+    public async Task<SubmitResult> SubmitAsync(string prompt, string? idempotencyKey, CancellationToken cancellationToken, Guid? conversationId = null)
     {
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -39,7 +39,8 @@ public sealed class TaskService(ITaskStore store, ITaskDispatcher queue, TimePro
             Result: null,
             Error: null,
             CreatedAt: now,
-            UpdatedAt: now);
+            UpdatedAt: now,
+            ConversationId: conversationId);
 
         await store.AddAsync(task, cancellationToken).ConfigureAwait(false);
         await queue.EnqueueAsync(task.Id, cancellationToken).ConfigureAwait(false);

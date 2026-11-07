@@ -16,4 +16,7 @@ public interface ITaskStore
     Task<bool> IsAvailableAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AgentTask>> ListByStatusAsync(AgentTaskStatus status, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Tasks in one conversation, oldest first.</summary>
+    Task<IReadOnlyList<AgentTask>> ListConversationAsync(Guid conversationId, int limit, CancellationToken cancellationToken);
 }

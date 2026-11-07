@@ -48,6 +48,18 @@ public sealed class EfTaskStore(IDbContextFactory<AgentDbContext> factory) : ITa
         return rows.Select(ToTask).ToList();
     }
 
+    public async Task<IReadOnlyList<AgentTask>> ListConversationAsync(Guid conversationId, int limit, CancellationToken cancellationToken)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await db.Tasks.AsNoTracking()
+            .Where(task => task.ConversationId == conversationId)
+            .OrderBy(task => task.CreatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return rows.Select(ToTask).ToList();
+    }
+
     public async Task<IReadOnlyList<AgentTask>> ListByStatusAsync(AgentTaskStatus status, int limit, CancellationToken cancellationToken)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
@@ -77,6 +89,7 @@ public sealed class EfTaskStore(IDbContextFactory<AgentDbContext> factory) : ITa
         Error = task.Error,
         CreatedAt = task.CreatedAt,
         UpdatedAt = task.UpdatedAt,
+        ConversationId = task.ConversationId,
     };
 
     private static AgentTask ToTask(TaskRow row) => new(
@@ -87,5 +100,6 @@ public sealed class EfTaskStore(IDbContextFactory<AgentDbContext> factory) : ITa
         row.Result,
         row.Error,
         row.CreatedAt,
-        row.UpdatedAt);
+        row.UpdatedAt,
+        row.ConversationId);
 }

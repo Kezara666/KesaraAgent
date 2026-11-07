@@ -18,8 +18,10 @@ const TERMINAL: TaskStatus[] = ['Done', 'Failed', 'Cancelled'];
       <form (ngSubmit)="submit()">
         <label for="prompt">What should the agent do?</label>
         <textarea id="prompt" name="prompt" rows="3" maxlength="4000" [(ngModel)]="prompt"></textarea>
+        <p class="muted">Chat {{ conversationId().slice(0, 8) }}: earlier messages in this chat are sent as context.</p>
         <div class="row">
           <button type="submit" [disabled]="busy() || prompt.trim().length === 0">Submit</button>
+          <button type="button" class="secondary" (click)="newChat()">New chat</button>
           @if (canListen) {
             <button type="button" class="secondary" (click)="listen()" [disabled]="listening()">
               {{ listening() ? 'Listening…' : 'Speak prompt' }}
@@ -69,6 +71,7 @@ export class TasksComponent implements OnInit {
 
   prompt = '';
   readonly tasks = signal<TaskView[]>([]);
+  readonly conversationId = signal<string>(crypto.randomUUID());
   readonly busy = signal(false);
   readonly listening = signal(false);
   readonly error = signal<string | null>(null);
@@ -103,7 +106,7 @@ export class TasksComponent implements OnInit {
     }
     this.busy.set(true);
     this.error.set(null);
-    this.api.submitTask(text, crypto.randomUUID()).subscribe({
+    this.api.submitTask(text, crypto.randomUUID(), this.conversationId()).subscribe({
       next: () => {
         this.prompt = '';
         this.busy.set(false);
@@ -114,6 +117,11 @@ export class TasksComponent implements OnInit {
         this.error.set(describeError(err));
       },
     });
+  }
+
+  newChat(): void {
+    this.conversationId.set(crypto.randomUUID());
+    this.error.set(null);
   }
 
   listen(): void {

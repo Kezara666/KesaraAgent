@@ -211,6 +211,9 @@ namespace Agent.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint");
 

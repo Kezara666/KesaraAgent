@@ -29,4 +29,7 @@ public sealed class McpToolOptions
     public string SideEffect { get; set; } = string.Empty;
 
     public List<string> RequiredInputs { get; set; } = [];
+
+    /// <summary>Shown to the model. When empty, the server's own description is used.</summary>
+    public string? Description { get; set; }
 }
