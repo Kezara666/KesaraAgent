@@ -45,6 +45,7 @@ if ($index -eq 0) {
 }
 
 $env:Agent__WorkspaceRoot = if ($env:AGENT_WORKSPACE) { $env:AGENT_WORKSPACE } else { Join-Path $root "workspace" }
+$env:Agent__Sandbox__BashImage = if ($env:AGENT_SANDBOX_IMAGE) { $env:AGENT_SANDBOX_IMAGE } else { "node:22-alpine" }
 $env:Agent__ApiTokenSha256 = [Environment]::GetEnvironmentVariable("API_TOKEN_HASH", "Process")
 $env:ASPNETCORE_URLS = "http://127.0.0.1:5055"
 
