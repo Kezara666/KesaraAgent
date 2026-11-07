@@ -182,3 +182,17 @@ td {
 code {
   font-size: 0.85rem;
 }
+
+/* Model replies are Markdown. Keep them readable in the normal page font. */
+.result {
+  white-space: normal;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.result h1, .result h2, .result h3 { margin: 0.8em 0 0.3em; }
+.result p { margin: 0.4em 0; }
+.result ul, .result ol { margin: 0.4em 0; padding-left: 1.4em; }
+.result code { font-family: ui-monospace, Consolas, monospace; background: rgba(127, 127, 127, 0.15); padding: 0 0.2em; border-radius: 3px; }
+.result pre { overflow-x: auto; background: rgba(127, 127, 127, 0.12); padding: 0.6em; border-radius: 4px; }
+.result table { border-collapse: collapse; margin: 0.5em 0; }
+.result th, .result td { border: 1px solid rgba(127, 127, 127, 0.4); padding: 0.3em 0.6em; }
