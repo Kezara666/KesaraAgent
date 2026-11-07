@@ -6,6 +6,18 @@ namespace Agent.Core.Tests.Workspace;
 public sealed class WorkspaceServiceTests
 {
     [Fact]
+    public async Task FR32ListToolReturnsTheWorkspaceFilePaths()
+    {
+        var files = new InMemoryWorkspaceFiles(new Dictionary<string, string> { ["README.md"] = "a", ["notes/todo.md"] = "b" });
+        var tools = new WorkspaceToolProvider(new WorkspaceService(files));
+
+        var output = await tools.InvokeAsync(WorkspaceToolProvider.ListName, new Dictionary<string, string>(), "k", CancellationToken.None);
+
+        Assert.Contains("README.md", output, StringComparison.Ordinal);
+        Assert.Contains("notes/todo.md", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task FR32EditReturnsDiffAndWritesNewContent()
     {
         var files = new InMemoryWorkspaceFiles(new Dictionary<string, string>

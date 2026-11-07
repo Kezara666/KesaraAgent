@@ -13,12 +13,14 @@ public sealed class WorkspaceToolProvider(WorkspaceService workspace) : IToolPro
     public const string SearchName = "workspace_search";
     public const string EditName = "workspace_edit";
     public const string CreateName = "workspace_create";
+    public const string ListName = "workspace_list";
 
     private const int MaxOutputCharacters = 8000;
     private const int MaxSearchHits = 20;
 
     private static readonly IReadOnlyList<ToolDescriptor> Tools =
     [
+        new(ListName, SideEffect.ReadOnly, [], "List the text files in the workspace, with their relative paths. Use it before reading or editing a file you have not seen."),
         new(ReadName, SideEffect.ReadOnly, ["path"], "Read a text file in the workspace. Give its relative path."),
         new(SearchName, SideEffect.ReadOnly, ["query"], "Find lines that contain the text in workspace files. Returns file, line, and text."),
         new(EditName, SideEffect.Write, ["path", "search", "replace"], "Replace one exact, unique piece of text in a workspace file. Requires approval."),
@@ -33,6 +35,12 @@ public sealed class WorkspaceToolProvider(WorkspaceService workspace) : IToolPro
     {
         switch (tool)
         {
+            case ListName:
+                {
+                    var files = await workspace.ListFilesAsync(cancellationToken).ConfigureAwait(false);
+                    return files.Count == 0 ? "The workspace has no text files." : Truncate(string.Join('\n', files));
+                }
+
             case ReadName:
                 return Truncate(await workspace.ReadAsync(Required(inputs, "path"), cancellationToken).ConfigureAwait(false));
 
