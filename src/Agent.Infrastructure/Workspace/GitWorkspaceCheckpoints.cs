@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Agent.Core.Workspace;
 
 namespace Agent.Infrastructure.Workspace;
@@ -8,12 +9,73 @@ namespace Agent.Infrastructure.Workspace;
 /// using a private index file. The user's index, branch, and working tree are not changed. The commit id is returned,
 /// and the ref keeps the snapshot from being garbage-collected.
 /// </summary>
-public sealed class GitWorkspaceCheckpoints(string repositoryRoot) : IWorkspaceCheckpoints
+public sealed partial class GitWorkspaceCheckpoints(string repositoryRoot) : IWorkspaceCheckpoints
 {
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(2);
 
     private const string Author = "kesara-agent";
     private const string AuthorEmail = "agent@localhost";
+    private const string CheckpointRefs = "refs/agent/checkpoints/";
+
+    [GeneratedRegex("^[0-9a-f]{40}$")]
+    private static partial Regex CommitIdPattern();
+
+    public async Task<IReadOnlyList<string>> ListAsync(int limit, CancellationToken cancellationToken)
+    {
+        if (!IsRepository())
+        {
+            return [];
+        }
+
+        var output = await RunGitAsync(["for-each-ref", "--sort=-creatordate", "--format=%(objectname)", CheckpointRefs], null, cancellationToken)
+            .ConfigureAwait(false);
+        return output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(limit).ToList();
+    }
+
+    public async Task RestoreAsync(string checkpointId, CancellationToken cancellationToken)
+    {
+        if (!CommitIdPattern().IsMatch(checkpointId))
+        {
+            throw new ArgumentException("The checkpoint id is not valid.", nameof(checkpointId));
+        }
+
+        var known = await ListAsync(int.MaxValue, cancellationToken).ConfigureAwait(false);
+        if (!known.Contains(checkpointId, StringComparer.Ordinal))
+        {
+            throw new ArgumentException("The checkpoint does not exist.", nameof(checkpointId));
+        }
+
+        // Keep the current state first, so the restore can be undone.
+        await CreateAsync("before restore to " + checkpointId, cancellationToken).ConfigureAwait(false);
+
+        // A private index writes the snapshot into the working tree. The user's index and branch are not touched.
+        var indexFile = Path.Combine(Path.GetTempPath(), $"agent-restore-{Guid.NewGuid():N}");
+        var privateIndex = new Dictionary<string, string?>(StringComparer.Ordinal) { ["GIT_INDEX_FILE"] = indexFile };
+        try
+        {
+            await RunGitAsync(["read-tree", checkpointId], privateIndex, cancellationToken).ConfigureAwait(false);
+            await RunGitAsync(["checkout-index", "-a", "-f"], privateIndex, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            TryDelete(indexFile);
+        }
+    }
+
+    private bool IsRepository() =>
+        Directory.Exists(Path.Combine(repositoryRoot, ".git")) || File.Exists(Path.Combine(repositoryRoot, ".git"));
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // The temporary index is outside the workspace, so the OS cleans it up if it is still locked.
+        }
+    }
 
     public async Task<string?> CreateAsync(string label, CancellationToken cancellationToken)
     {

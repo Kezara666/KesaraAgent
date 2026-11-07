@@ -37,7 +37,39 @@ public static class WorkspaceEndpoints
             .WithName("RunWorkspaceCommand")
             .WithSummary("Run an allowed command in the workspace. Denied commands are refused with 403.");
 
+        group.MapGet("/checkpoints", ListCheckpointsAsync)
+            .WithName("ListWorkspaceCheckpoints")
+            .WithSummary("Recent workspace checkpoints, newest first.");
+
+        group.MapPost("/checkpoints/{id}/restore", RestoreCheckpointAsync)
+            .RequireAuthorization(ApiPolicies.Act)
+            .WithName("RestoreWorkspaceCheckpoint")
+            .WithSummary("Ask to restore a checkpoint. The restore runs only after a person approves it.");
+
         return app;
+    }
+
+    private static async Task<IResult> ListCheckpointsAsync(IWorkspaceCheckpoints checkpoints, CancellationToken cancellationToken) =>
+        Results.Ok(await checkpoints.ListAsync(50, cancellationToken).ConfigureAwait(false));
+
+    private static async Task<IResult> RestoreCheckpointAsync(
+        string id,
+        HttpContext httpContext,
+        CheckpointRestoreActions restores,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var request = await restores.RequestAsync(id, httpContext.User.Identity?.Name ?? "anonymous", cancellationToken)
+                .ConfigureAwait(false);
+            return Results.Accepted(
+                $"/api/v1/approvals/{request.Id}",
+                new { status = "PendingApproval", approvalId = request.Id });
+        }
+        catch (ArgumentException exception)
+        {
+            return Results.Problem(title: "The checkpoint cannot be restored.", detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     private static Task<IResult> ReadFileAsync(string path, WorkspaceService service, CancellationToken cancellationToken) =>

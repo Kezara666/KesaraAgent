@@ -69,6 +69,7 @@ builder.Services.AddSingleton<IToolListing>(provider => provider.GetRequiredServ
 builder.Services.AddSingleton<IToolInvoker>(provider => provider.GetRequiredService<ToolRegistry>());
 builder.Services.AddSingleton<AgentLoop>();
 builder.Services.AddSingleton<AgentToolActions>();
+builder.Services.AddSingleton<CheckpointRestoreActions>();
 builder.Services.AddSingleton<IToolTestRunner>(provider => new SandboxToolTestRunner(
     provider.GetRequiredService<ISandboxRunner>(),
     toolTestImage,
