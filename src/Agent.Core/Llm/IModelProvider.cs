@@ -9,6 +9,17 @@ public interface IModelProvider
     string ProviderId { get; }
 
     Task<ProviderReply> CompleteAsync(string model, string prompt, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A conversation call that may offer tools. Providers without tool support answer from the last user message and
+    /// return no tool calls.
+    /// </summary>
+    async Task<ChatReply> ChatAsync(string model, IReadOnlyList<ChatTurn> turns, IReadOnlyList<ModelTool> tools, CancellationToken cancellationToken)
+    {
+        var last = turns.LastOrDefault(turn => turn.Role == "user")?.Content ?? string.Empty;
+        var reply = await CompleteAsync(model, last, cancellationToken).ConfigureAwait(false);
+        return new ChatReply(reply.Text, [], reply.InputTokens, reply.OutputTokens);
+    }
 }
 
 /// <summary>Raw reply from a provider, with the token counts it reported.</summary>

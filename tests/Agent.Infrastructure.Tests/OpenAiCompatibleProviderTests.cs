@@ -86,6 +86,44 @@ public sealed class OpenAiCompatibleProviderTests
         Assert.Contains("\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]", handler.LastRequestBody, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task FR41ToolsAreSentInTheStandardFormat()
+    {
+        const string reply = """{"choices":[{"message":{"content":"ok"}}]}""";
+        var handler = new StubHandler(HttpStatusCode.OK, reply);
+        var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/v1/") };
+        var provider = new OpenAiCompatibleProvider("p", http, KeyVariable);
+        var tools = new[] { new ModelTool("workspace_read", "Read a file.", ["path"]) };
+
+        await provider.ChatAsync("the-model", [new ChatTurn("user", "read it")], tools, CancellationToken.None);
+
+        Assert.NotNull(handler.LastRequestBody);
+        Assert.Contains("\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"workspace_read\"", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"required\":[\"path\"]", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"tool_choice\":\"auto\"", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task FR41ToolCallsInTheReplyAreReturnedWithTheirArguments()
+    {
+        const string body = """
+            {"choices":[{"message":{"content":null,"tool_calls":[
+              {"id":"call-1","type":"function","function":{"name":"workspace_read","arguments":"{\"path\":\"notes.md\",\"line\":3}"}}
+            ]}}],"usage":{"prompt_tokens":5,"completion_tokens":2}}
+            """;
+        var handler = new StubHandler(HttpStatusCode.OK, body);
+        var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/v1/") };
+        var provider = new OpenAiCompatibleProvider("p", http, KeyVariable);
+
+        var answer = await provider.ChatAsync("the-model", [new ChatTurn("user", "read it")], [], CancellationToken.None);
+
+        var call = Assert.Single(answer.ToolCalls);
+        Assert.Equal("call-1", call.Id);
+        Assert.Equal("workspace_read", call.Name);
+        Assert.Equal("notes.md", call.Arguments["path"]);
+        Assert.Equal("3", call.Arguments["line"]);
+    }
+
     private static async Task<ProviderReply> CallAsync(HttpStatusCode status, string body)
     {
         var handler = new StubHandler(status, body);

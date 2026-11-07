@@ -2,6 +2,7 @@ using Agent.Api.Auditing;
 using Agent.Api.Auth;
 using Agent.Api.Endpoints;
 using Agent.Api.Workers;
+using Agent.Core.Agent;
 using Agent.Core.Approvals;
 using Agent.Core.Devices;
 using Agent.Core.Sandbox;
@@ -9,6 +10,7 @@ using Agent.Core.Shell;
 using Agent.Core.Tasks;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
+using Agent.Core.Workspace;
 using Agent.Infrastructure;
 using Agent.Infrastructure.Devices;
 using Agent.Infrastructure.Llm;
@@ -56,9 +58,17 @@ builder.Services.AddSingleton<IShellRunner>(provider => new SandboxShellRunner(
 var mcpServers = builder.Configuration.GetSection("Agent:McpServers").Get<List<McpServerOptions>>() ?? [];
 var mcpGateway = await McpToolGateway.ConnectAsync(mcpServers, CancellationToken.None);
 builder.Services.AddSingleton(mcpGateway);
-builder.Services.AddSingleton<IToolCatalog>(mcpGateway);
-builder.Services.AddSingleton<IToolListing>(mcpGateway);
-builder.Services.AddSingleton<IToolInvoker>(mcpGateway);
+
+// One registry over every tool source: the built-in workspace tools and the configured MCP servers.
+// The planner, workflows, and the agent loop all see the same tools.
+builder.Services.AddSingleton<IToolProvider>(mcpGateway);
+builder.Services.AddSingleton<IToolProvider, WorkspaceToolProvider>();
+builder.Services.AddSingleton<ToolRegistry>();
+builder.Services.AddSingleton<IToolCatalog>(provider => provider.GetRequiredService<ToolRegistry>());
+builder.Services.AddSingleton<IToolListing>(provider => provider.GetRequiredService<ToolRegistry>());
+builder.Services.AddSingleton<IToolInvoker>(provider => provider.GetRequiredService<ToolRegistry>());
+builder.Services.AddSingleton<AgentLoop>();
+builder.Services.AddSingleton<AgentToolActions>();
 builder.Services.AddSingleton<IToolTestRunner>(provider => new SandboxToolTestRunner(
     provider.GetRequiredService<ISandboxRunner>(),
     toolTestImage,

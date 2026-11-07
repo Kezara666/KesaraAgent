@@ -68,7 +68,7 @@ public sealed class WorkflowToolApiTests(ApiFactory factory) : IClassFixture<Api
     }
 
     [Fact]
-    public async Task FR51ToolListIsReturnedAndEmptyWhenNoServerIsConfigured()
+    public async Task FR51ToolListIncludesTheBuiltInWorkspaceTools()
     {
         using var client = AuthorizedClient();
 
@@ -77,7 +77,9 @@ public sealed class WorkflowToolApiTests(ApiFactory factory) : IClassFixture<Api
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(JsonValueKind.Array, body.ValueKind);
-        Assert.Empty(body.EnumerateArray());
+        var names = body.EnumerateArray().Select(tool => tool.GetProperty("name").GetString()).ToList();
+        Assert.Contains("workspace_read", names);
+        Assert.Contains("workspace_edit", names);
     }
 
     [Fact]

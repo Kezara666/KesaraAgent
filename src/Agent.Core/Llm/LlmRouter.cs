@@ -4,8 +4,9 @@ namespace Agent.Core.Llm;
 
 /// <summary>
 /// Routes each call through configured profiles in order. A profile is skipped when it is disabled,
-/// lacks a needed capability, cannot fit the prompt, or has spent its daily budget. A provider failure
-/// moves on to the next profile (FR-4.2). If nothing answers, the caller gets a clear error.
+/// lacks a needed capability, cannot fit the prompt, or has spent its daily budget. Rate limits and server errors
+/// retry the same profile up to its limit, then the router moves on (FR-4.2). If nothing answers, the caller gets a
+/// clear error. Plain completions and tool-enabled conversations share this one path.
 /// </summary>
 public sealed class LlmRouter(
     IReadOnlyList<ModelProfile> profiles,
@@ -29,13 +30,31 @@ public sealed class LlmRouter(
     {
         ArgumentException.ThrowIfNullOrEmpty(request.Prompt);
 
+        var turns = new[] { new ChatTurn("user", request.Prompt) };
+        var (reply, profile) = await RouteAsync(turns, [], request.RequiresToolCalling, cancellationToken).ConfigureAwait(false);
+        return new LlmResponse(reply.Text ?? string.Empty, profile.Id, profile.Model, reply.InputTokens + reply.OutputTokens);
+    }
+
+    public async Task<ModelAnswer> ChatAsync(IReadOnlyList<ChatTurn> turns, IReadOnlyList<ModelTool> tools, CancellationToken cancellationToken)
+    {
+        var (reply, profile) = await RouteAsync(turns, tools, requiresToolCalling: tools.Count > 0, cancellationToken)
+            .ConfigureAwait(false);
+        return new ModelAnswer(reply.Text, reply.ToolCalls, reply.InputTokens, reply.OutputTokens, profile.Id);
+    }
+
+    private async Task<(ChatReply Reply, ModelProfile Profile)> RouteAsync(
+        IReadOnlyList<ChatTurn> turns,
+        IReadOnlyList<ModelTool> tools,
+        bool requiresToolCalling,
+        CancellationToken cancellationToken)
+    {
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var estimatedPromptTokens = EstimateTokens(request.Prompt);
+        var estimatedPromptTokens = EstimateTurns(turns, tools);
         var attempts = new List<string>();
 
         foreach (var profile in profiles)
         {
-            if (!IsEligible(profile, request, estimatedPromptTokens))
+            if (!IsEligible(profile, requiresToolCalling, estimatedPromptTokens))
             {
                 continue;
             }
@@ -58,14 +77,13 @@ public sealed class LlmRouter(
             {
                 try
                 {
-                    var reply = await provider.CompleteAsync(profile.Model, request.Prompt, cancellationToken)
-                        .ConfigureAwait(false);
+                    var reply = await provider.ChatAsync(profile.Model, turns, tools, cancellationToken).ConfigureAwait(false);
 
                     var tokens = reply.InputTokens + reply.OutputTokens;
                     await ledger.AddAsync(profile.Id, today, tokens, cancellationToken).ConfigureAwait(false);
                     await MaybeAlertAsync(profile, today, used + tokens, cancellationToken).ConfigureAwait(false);
 
-                    return new LlmResponse(reply.Text, profile.Id, profile.Model, tokens);
+                    return (reply, profile);
                 }
                 catch (ProviderException exception) when (IsTransient(exception.Kind) && attempt < limit)
                 {
@@ -112,11 +130,31 @@ public sealed class LlmRouter(
         }
     }
 
-    private static bool IsEligible(ModelProfile profile, LlmRequest request, int estimatedPromptTokens) =>
+    private static bool IsEligible(ModelProfile profile, bool requiresToolCalling, int estimatedPromptTokens) =>
         profile.Enabled
-        && (!request.RequiresToolCalling || profile.SupportsToolCalling)
+        && (!requiresToolCalling || profile.SupportsToolCalling)
         && estimatedPromptTokens <= profile.ContextTokens;
 
     /// <summary>Rough estimate used only for context fitting. Providers report real counts after the call.</summary>
     public static int EstimateTokens(string text) => Math.Max(1, text.Length / 4);
+
+    private static int EstimateTurns(IReadOnlyList<ChatTurn> turns, IReadOnlyList<ModelTool> tools)
+    {
+        long characters = 0;
+        foreach (var turn in turns)
+        {
+            characters += turn.Content?.Length ?? 0;
+            foreach (var call in turn.ToolCalls ?? [])
+            {
+                characters += call.Name.Length + call.Arguments.Sum(pair => pair.Key.Length + pair.Value.Length);
+            }
+        }
+
+        foreach (var tool in tools)
+        {
+            characters += tool.Name.Length + tool.Description.Length + tool.RequiredInputs.Sum(input => input.Length);
+        }
+
+        return (int)Math.Min(int.MaxValue, Math.Max(1, characters / 4));
+    }
 }
