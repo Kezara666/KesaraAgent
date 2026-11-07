@@ -1,5 +1,8 @@
+using Agent.Core.Agent;
+using Agent.Core.Ports;
 using Agent.Core.Tasks;
 using Agent.Core.Tests.Fakes;
+using Agent.Core.Workflows;
 using Xunit;
 
 namespace Agent.Core.Tests.Tasks;
@@ -14,7 +17,7 @@ public sealed class TaskProcessorTests
         var store = new InMemoryTaskStore();
         var clock = new FakeClock(Start);
         var service = new TaskService(store, new InMemoryTaskDispatcher(), clock);
-        var processor = new TaskProcessor(store, new ScriptedLlmClient(prompt => $"echo: {prompt}"), clock);
+        var processor = Processor(store, new ScriptedLlmClient(prompt => $"echo: {prompt}"), clock);
 
         var submitted = await service.SubmitAsync("hello", idempotencyKey: null, CancellationToken.None);
         await processor.ProcessAsync(submitted.Task.Id, CancellationToken.None);
@@ -32,7 +35,7 @@ public sealed class TaskProcessorTests
         var store = new InMemoryTaskStore();
         var clock = new FakeClock(Start);
         var service = new TaskService(store, new InMemoryTaskDispatcher(), clock);
-        var processor = new TaskProcessor(
+        var processor = Processor(
             store,
             new ScriptedLlmClient(_ => throw new InvalidOperationException("secret-token-abc123 in message")),
             clock);
@@ -54,12 +57,19 @@ public sealed class TaskProcessorTests
         var clock = new FakeClock(Start);
         var service = new TaskService(store, new InMemoryTaskDispatcher(), clock);
         var calls = 0;
-        var processor = new TaskProcessor(store, new ScriptedLlmClient(_ => { calls++; return "ok"; }), clock);
+        var processor = Processor(store, new ScriptedLlmClient(_ => { calls++; return "ok"; }), clock);
 
         var submitted = await service.SubmitAsync("hello", idempotencyKey: null, CancellationToken.None);
         await processor.ProcessAsync(submitted.Task.Id, CancellationToken.None);
         await processor.ProcessAsync(submitted.Task.Id, CancellationToken.None);
 
         Assert.Equal(1, calls);
+    }
+
+    private static TaskProcessor Processor(ITaskStore store, ILlmClient llm, TimeProvider clock)
+    {
+        var tools = new ToolRegistry([]);
+        var loop = new AgentLoop(llm, tools, tools, tools, new InMemoryApprovalStore(), new InMemoryAuditLog(), clock);
+        return new TaskProcessor(store, loop, clock);
     }
 }

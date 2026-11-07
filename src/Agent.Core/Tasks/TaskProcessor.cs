@@ -1,13 +1,12 @@
-using Agent.Core.Llm;
-using Agent.Core.Ports;
+using Agent.Core.Agent;
 
 namespace Agent.Core.Tasks;
 
 /// <summary>
-/// Runs one queued task to a terminal state. Failures are recorded on the task, not thrown,
+/// Runs one queued task to a terminal state through the agent loop. Failures are recorded on the task, not thrown,
 /// so one bad task never stops the worker.
 /// </summary>
-public sealed class TaskProcessor(ITaskStore store, ILlmClient llm, TimeProvider clock)
+public sealed class TaskProcessor(ITaskStore store, AgentLoop agent, TimeProvider clock)
 {
     public async Task ProcessAsync(Guid taskId, CancellationToken cancellationToken)
     {
@@ -22,11 +21,16 @@ public sealed class TaskProcessor(ITaskStore store, ILlmClient llm, TimeProvider
 
         try
         {
-            var response = await llm.CompleteAsync(new LlmRequest(task.Prompt), cancellationToken).ConfigureAwait(false);
+            var run = await agent.RunAsync(task.Prompt, "task", task.Id.ToString("N"), traceId: null, cancellationToken)
+                .ConfigureAwait(false);
+            var text = run.PendingApprovals.Count == 0
+                ? run.Text
+                : $"{run.Text}\n\nWaiting for approval: {string.Join(", ", run.PendingApprovals)}";
+
             var done = running with
             {
                 Status = AgentTaskStatus.Done,
-                Result = response.Text,
+                Result = text,
                 UpdatedAt = clock.GetUtcNow(),
             };
             await store.UpdateAsync(done, cancellationToken).ConfigureAwait(false);

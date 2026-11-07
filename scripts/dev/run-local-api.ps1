@@ -35,7 +35,7 @@ foreach ($provider in $providers) {
     [Environment]::SetEnvironmentVariable("Agent__ModelProfiles__${index}__Id", "$($provider.Id)-main", "Process")
     [Environment]::SetEnvironmentVariable("Agent__ModelProfiles__${index}__ProviderId", $provider.Id, "Process")
     [Environment]::SetEnvironmentVariable("Agent__ModelProfiles__${index}__Model", $model, "Process")
-    [Environment]::SetEnvironmentVariable("Agent__ModelProfiles__${index}__SupportsToolCalling", "false", "Process")
+    [Environment]::SetEnvironmentVariable("Agent__ModelProfiles__${index}__SupportsToolCalling", $(if ($env:SUPPORTS_TOOLS) { $env:SUPPORTS_TOOLS } else { "true" }), "Process")
     [Environment]::SetEnvironmentVariable("Agent__ModelProfiles__${index}__ContextTokens", "8000", "Process")
     $index++
 }
@@ -44,6 +44,7 @@ if ($index -eq 0) {
     throw "No provider is ready. Set NIM_API_KEY and NIM_MODEL, or OPENROUTER_API_KEY and AGENT_MODEL, in .env."
 }
 
+$env:Agent__WorkspaceRoot = if ($env:AGENT_WORKSPACE) { $env:AGENT_WORKSPACE } else { Join-Path $root "workspace" }
 $env:Agent__ApiTokenSha256 = [Environment]::GetEnvironmentVariable("API_TOKEN_HASH", "Process")
 $env:ASPNETCORE_URLS = "http://127.0.0.1:5055"
 

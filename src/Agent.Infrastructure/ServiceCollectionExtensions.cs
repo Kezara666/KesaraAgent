@@ -98,7 +98,7 @@ public static class ServiceCollectionExtensions
             Id: OfflineModelProvider.Id,
             ProviderId: OfflineModelProvider.Id,
             Model: OfflineModelProvider.Id,
-            SupportsToolCalling: false,
+            SupportsToolCalling: true,
             ContextTokens: 1_000_000,
             DailyTokenBudget: long.MaxValue,
             Enabled: true));

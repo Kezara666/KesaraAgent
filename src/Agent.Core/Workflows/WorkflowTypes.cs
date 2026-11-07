@@ -11,8 +11,8 @@ public sealed record WorkflowStep(string Id, string Tool, IReadOnlyDictionary<st
 /// <summary>A fixed, reviewable plan. Once approved, it cannot grow (FR-9.9).</summary>
 public sealed record WorkflowPlan(IReadOnlyList<WorkflowStep> Steps);
 
-/// <summary>What the planner and validator need to know about a tool (FR-9.13).</summary>
-public sealed record ToolDescriptor(string Name, SideEffect SideEffect, IReadOnlyList<string> RequiredInputs);
+/// <summary>A tool the planner or the agent may use. <paramref name="Description"/> is shown to the model.</summary>
+public sealed record ToolDescriptor(string Name, SideEffect SideEffect, IReadOnlyList<string> RequiredInputs, string Description = "");
 
 public enum RunStatus
 {

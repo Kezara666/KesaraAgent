@@ -1,0 +1,24 @@
+[
+  {
+    "name": "simple question uses no tool",
+    "prompt": "What is 2 plus 2? Answer with just the number.",
+    "expectNoTools": true,
+    "answerMatches": "4"
+  },
+  {
+    "name": "search reads the workspace",
+    "prompt": "Search the workspace for the word TODO and tell me how many matches you found.",
+    "expectTools": ["workspace_search"]
+  },
+  {
+    "name": "reading a file uses the read tool",
+    "prompt": "Read the file README.md and tell me its first heading.",
+    "expectTools": ["workspace_read"]
+  },
+  {
+    "name": "an edit is held for approval, not applied",
+    "prompt": "In notes.md, replace the word draft with final.",
+    "expectHeld": ["workspace_edit"],
+    "expectNoTools": false
+  }
+]
