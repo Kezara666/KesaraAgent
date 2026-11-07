@@ -8,6 +8,10 @@ public sealed class WorkspaceService(IWorkspaceFileSystem files, IWorkspaceCheck
     public Task<string> ReadAsync(string relativePath, CancellationToken cancellationToken) =>
         files.ReadTextAsync(relativePath, cancellationToken);
 
+    /// <summary>Text files under the workspace root, as relative paths. Build and version-control folders are excluded.</summary>
+    public Task<IReadOnlyList<string>> ListFilesAsync(CancellationToken cancellationToken) =>
+        files.ListTextFilesAsync(cancellationToken);
+
     public async Task<IReadOnlyList<SearchHit>> SearchAsync(string query, int limit, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);

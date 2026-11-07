@@ -9,6 +9,31 @@ import { createRecognizer, detectSpeech, speak, SpeechRecognitionLike } from '..
 
 const TERMINAL: TaskStatus[] = ['Done', 'Failed', 'Cancelled'];
 
+// The current chat survives a page reload in this browser tab. Storage can be blocked, so it is optional.
+const CONVERSATION_KEY = 'agent.conversation';
+
+function loadConversationId(): string {
+  try {
+    const saved = sessionStorage.getItem(CONVERSATION_KEY);
+    if (saved) {
+      return saved;
+    }
+  } catch {
+    // Storage unavailable. A fresh chat is used for this page only.
+  }
+  const id = crypto.randomUUID();
+  saveConversationId(id);
+  return id;
+}
+
+function saveConversationId(id: string): void {
+  try {
+    sessionStorage.setItem(CONVERSATION_KEY, id);
+  } catch {
+    // Storage unavailable. The chat still works until the page reloads.
+  }
+}
+
 @Component({
   selector: 'app-tasks',
   imports: [FormsModule, DatePipe],
@@ -71,7 +96,7 @@ export class TasksComponent implements OnInit {
 
   prompt = '';
   readonly tasks = signal<TaskView[]>([]);
-  readonly conversationId = signal<string>(crypto.randomUUID());
+  readonly conversationId = signal<string>(loadConversationId());
   readonly busy = signal(false);
   readonly listening = signal(false);
   readonly error = signal<string | null>(null);
@@ -120,7 +145,9 @@ export class TasksComponent implements OnInit {
   }
 
   newChat(): void {
-    this.conversationId.set(crypto.randomUUID());
+    const id = crypto.randomUUID();
+    this.conversationId.set(id);
+    saveConversationId(id);
     this.error.set(null);
   }
 
