@@ -10,6 +10,9 @@ public interface IWorkspaceFileSystem
 
     Task WriteTextAsync(string relativePath, string content, CancellationToken cancellationToken);
 
+    /// <summary>Creates a new text file. Refuses to overwrite an existing file.</summary>
+    Task CreateTextAsync(string relativePath, string content, CancellationToken cancellationToken);
+
     /// <summary>Lists text files under the root, excluding build and VCS folders. Paths use forward slashes.</summary>
     Task<IReadOnlyList<string>> ListTextFilesAsync(CancellationToken cancellationToken);
 }

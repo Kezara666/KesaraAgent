@@ -12,6 +12,7 @@ public sealed class WorkspaceToolProvider(WorkspaceService workspace) : IToolPro
     public const string ReadName = "workspace_read";
     public const string SearchName = "workspace_search";
     public const string EditName = "workspace_edit";
+    public const string CreateName = "workspace_create";
 
     private const int MaxOutputCharacters = 8000;
     private const int MaxSearchHits = 20;
@@ -21,6 +22,7 @@ public sealed class WorkspaceToolProvider(WorkspaceService workspace) : IToolPro
         new(ReadName, SideEffect.ReadOnly, ["path"], "Read a text file in the workspace. Give its relative path."),
         new(SearchName, SideEffect.ReadOnly, ["query"], "Find lines that contain the text in workspace files. Returns file, line, and text."),
         new(EditName, SideEffect.Write, ["path", "search", "replace"], "Replace one exact, unique piece of text in a workspace file. Requires approval."),
+        new(CreateName, SideEffect.Write, ["path", "content"], "Create a new text file in the workspace. Never overwrites a file. Requires approval."),
     ];
 
     public ToolDescriptor? Find(string name) => Tools.FirstOrDefault(tool => tool.Name == name);
@@ -51,6 +53,16 @@ public sealed class WorkspaceToolProvider(WorkspaceService workspace) : IToolPro
                             cancellationToken)
                         .ConfigureAwait(false);
                     return Truncate(result.Diff);
+                }
+
+            case CreateName:
+                {
+                    var created = await workspace.CreateAsync(
+                            Required(inputs, "path"),
+                            inputs.TryGetValue("content", out var content) ? content : string.Empty,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    return "Created " + created + ".";
                 }
 
             default:

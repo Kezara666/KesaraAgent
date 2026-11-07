@@ -37,6 +37,19 @@ public sealed class WorkspaceServiceTests
         Assert.Equal(("b.md", 1), (hits[1].Path, hits[1].Line));
     }
 
+    [Fact]
+    public async Task FR35CreateWritesANewFileAndNeverOverwritesAnExistingOne()
+    {
+        var files = new InMemoryWorkspaceFiles(new Dictionary<string, string> { ["notes.md"] = "keep me" });
+        var service = new WorkspaceService(files);
+
+        await service.CreateAsync("todo.md", "buy milk", CancellationToken.None);
+        await Assert.ThrowsAsync<IOException>(() => service.CreateAsync("notes.md", "overwrite", CancellationToken.None));
+
+        Assert.Equal("buy milk", files.Contents["todo.md"]);
+        Assert.Equal("keep me", files.Contents["notes.md"]);
+    }
+
     private sealed class InMemoryWorkspaceFiles(IDictionary<string, string> initial) : IWorkspaceFileSystem
     {
         public Dictionary<string, string> Contents { get; } = new(initial, StringComparer.Ordinal);
@@ -45,6 +58,17 @@ public sealed class WorkspaceServiceTests
             Task.FromResult(Contents.TryGetValue(relativePath, out var text)
                 ? text
                 : throw new FileNotFoundException(relativePath));
+
+        public Task CreateTextAsync(string relativePath, string content, CancellationToken cancellationToken)
+        {
+            if (Contents.ContainsKey(relativePath))
+            {
+                throw new IOException("The file already exists.");
+            }
+
+            Contents[relativePath] = content;
+            return Task.CompletedTask;
+        }
 
         public Task WriteTextAsync(string relativePath, string content, CancellationToken cancellationToken)
         {

@@ -35,6 +35,18 @@ public sealed class LocalWorkspaceFileSystem : IWorkspaceFileSystem
         return await File.ReadAllTextAsync(fullPath, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task CreateTextAsync(string relativePath, string content, CancellationToken cancellationToken)
+    {
+        var fullPath = ResolveSafe(relativePath);
+        if (File.Exists(fullPath))
+        {
+            throw new IOException("The file already exists.");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        await File.WriteAllTextAsync(fullPath, content, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task WriteTextAsync(string relativePath, string content, CancellationToken cancellationToken)
     {
         var fullPath = ResolveSafe(relativePath);
