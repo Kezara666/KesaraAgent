@@ -49,6 +49,36 @@ public sealed class GitWorkspaceCheckpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task FR35RestoreBringsBackTheCheckpointedContentAndKeepsTheCurrentStateAsACheckpoint()
+    {
+        Directory.CreateDirectory(root);
+        Git("init", "-q");
+        var path = Path.Combine(root, "notes.md");
+        File.WriteAllText(path, "version one");
+        var checkpoints = new GitWorkspaceCheckpoints(root);
+        var first = await checkpoints.CreateAsync("first", CancellationToken.None);
+        File.WriteAllText(path, "version two");
+
+        await checkpoints.RestoreAsync(first!, CancellationToken.None);
+
+        Assert.Equal("version one", File.ReadAllText(path));
+        Assert.Equal(2, (await checkpoints.ListAsync(10, CancellationToken.None)).Count);
+    }
+
+    [Fact]
+    public async Task FR35RestoreRefusesAnIdThatIsNotACheckpoint()
+    {
+        Directory.CreateDirectory(root);
+        Git("init", "-q");
+        var checkpoints = new GitWorkspaceCheckpoints(root);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            checkpoints.RestoreAsync("0123456789abcdef0123456789abcdef01234567", CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            checkpoints.RestoreAsync("--all", CancellationToken.None));
+    }
+
+    [Fact]
     public async Task FR35WorkspaceThatIsNotARepositoryHasNoCheckpoint()
     {
         Directory.CreateDirectory(root);

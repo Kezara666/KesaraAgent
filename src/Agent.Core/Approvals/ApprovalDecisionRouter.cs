@@ -3,6 +3,7 @@ using Agent.Core.Devices;
 using Agent.Core.Governance;
 using Agent.Core.ToolForge;
 using Agent.Core.Workflows;
+using Agent.Core.Workspace;
 
 namespace Agent.Core.Approvals;
 
@@ -16,7 +17,8 @@ public sealed class ApprovalDecisionRouter(
     WorkflowService workflows,
     ToolForgeService toolForge,
     DeviceCommandService? devices = null,
-    AgentToolActions? agentTools = null)
+    AgentToolActions? agentTools = null,
+    CheckpointRestoreActions? restores = null)
 {
     public const string CommandKind = "command";
 
@@ -46,6 +48,9 @@ public sealed class ApprovalDecisionRouter(
                 break;
             case AgentLoop.ApprovalKind when agentTools is not null:
                 await agentTools.DecideAsync(approvalId, approve, approver, cancellationToken).ConfigureAwait(false);
+                break;
+            case CheckpointRestoreActions.ApprovalKind when restores is not null:
+                await restores.DecideAsync(approvalId, approve, approver, cancellationToken).ConfigureAwait(false);
                 break;
             default:
                 throw new ApprovalStateException($"No decision route exists for approvals of kind '{request.Kind}'.");
