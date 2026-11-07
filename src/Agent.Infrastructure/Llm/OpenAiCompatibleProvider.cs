@@ -77,9 +77,14 @@ public sealed class OpenAiCompatibleProvider(string providerId, HttpClient http,
 
     private static long EstimateTokens(string text) => LlmRouter.EstimateTokens(text);
 
-    public sealed record ChatRequest(string Model, IReadOnlyList<ChatMessage> Messages);
+    // OpenAI-compatible endpoints expect lowercase field names. Without these names the request is rejected.
+    public sealed record ChatRequest(
+        [property: JsonPropertyName("model")] string Model,
+        [property: JsonPropertyName("messages")] IReadOnlyList<ChatMessage> Messages);
 
-    public sealed record ChatMessage(string Role, string Content);
+    public sealed record ChatMessage(
+        [property: JsonPropertyName("role")] string Role,
+        [property: JsonPropertyName("content")] string Content);
 
     public sealed class ChatResponse
     {
